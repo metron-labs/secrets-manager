@@ -1,6 +1,5 @@
 import { DefaultAzureCredential, ClientSecretCredential } from "@azure/identity";
-import { CryptographyClient } from "@azure/keyvault-keys";
-import { KnownEncryptionAlgorithms } from "@azure/keyvault-keys";
+import { CryptographyClient, WrapResult } from "@azure/keyvault-keys";
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { dirname } from 'path';
@@ -36,6 +35,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     logger: any;
 
     getDefaultLogger() {
+        this.logger = console
         if (!this.logger) {
             return {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,7 +76,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
         return this.saveString(key, json);
     }
 
-    Constructor(keyId: string, configFileLocation: string | null, azSessionConfig: AzureSessionConfig | null) {
+    constructor(keyId: string, configFileLocation: string | null, azSessionConfig: AzureSessionConfig | null) {
         /** 
         Initilaizes AzureKeyValueStorage
 
@@ -105,9 +105,15 @@ export class AzureKeyValueStorage implements KeyValueStorage {
 
         this.last_saved_config_hash = "";
         this.config = {};
-        this.loadConfig()
-        
+        this.loadConfig().then(() => {
+            this.logger.info(`Loaded config file from ${this.defaultConfigFileLocation}`);
+        })
+    }
 
+    async init() {
+        await this.loadConfig();
+        this.logger.info(`Loaded config file from ${this.defaultConfigFileLocation}`);
+        return this; // Return the instance to allow chaining
     }
 
     private async encryptBuffer(message: string): Promise<Buffer> {
@@ -116,7 +122,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             const key = randomBytes(32);
 
             // Step 2: Create AES-GCM cipher instance
-            const nonce = randomBytes(12); // AES-GCM requires a 12-byte nonce
+            const nonce = randomBytes(16); // AES-GCM requires a 16-byte nonce
             const cipher = createCipheriv('aes-256-gcm', key, nonce);
 
             // Step 3: Encrypt the message
@@ -124,10 +130,11 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             const tag = cipher.getAuthTag();
 
             // Step 4: Wrap the AES key using Azure Key Vault
-            let wrappedKey: Buffer;
+            let wrappedKey;
+            let response : WrapResult;
             try {
-                const response = await this.cryptoClient.wrapKey(KnownEncryptionAlgorithms.RSAOaep, key);
-                wrappedKey = Buffer.from(response.result); // The wrapped (encrypted) AES key
+                response = await this.cryptoClient.wrapKey('RSA-OAEP', key);
+                wrappedKey = response.result; // The wrapped (encrypted) AES key
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 console.error("Azure crypto client failed to wrap key:", err.message);
@@ -135,14 +142,18 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             }
 
             // Step 5: Build the blob
-            let blob = Buffer.from(BLOB_HEADER); // Start with the header
+            // let blob = Buffer.from(BLOB_HEADER); // Start with the header
             const parts = [wrappedKey, nonce, tag, ciphertext];
 
+            const buffers: Buffer[] = [];
+            buffers[0] = Buffer.from(BLOB_HEADER,"latin1");
             for (const part of parts) {
-                const lengthBuffer = Buffer.alloc(2); // 2 bytes for length
-                lengthBuffer.writeUInt16BE(part.length, 0);
-                blob = Buffer.concat([blob, lengthBuffer, part]);
+                const partBuffer = Buffer.isBuffer(part) ? part : Buffer.from(part,"latin1");
+                const lengthBuffer = Buffer.alloc(2);
+                lengthBuffer.writeUInt16BE(partBuffer.length, 0);
+                buffers.push(lengthBuffer, partBuffer);
             }
+            const blob = Buffer.concat(buffers);
 
             return blob;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -155,8 +166,8 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     private async decryptBuffer(ciphertext: Buffer): Promise<string> {
         try {
             // Step 1: Validate BLOB_HEADER
-            const header = ciphertext.subarray(0, 2);
-            if (!header.equals(Buffer.from(BLOB_HEADER))) {
+            const header = Buffer.from(ciphertext.subarray(0, 2));
+            if (!header.equals(Buffer.from(BLOB_HEADER,"latin1"))) {
                 return ""; // Invalid header
             }
 
@@ -201,10 +212,10 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             }
 
             // Step 3: Unwrap the AES key using Azure Key Vault
-            let key: Buffer;
+            let key;
             try {
-                const response = await this.cryptoClient.unwrapKey(KnownEncryptionAlgorithms.RSAOaep, encryptedKey);
-                key = Buffer.from(response.result); // Unwrapped AES key
+                const response = await this.cryptoClient.unwrapKey('RSA-OAEP', encryptedKey);
+                key =response.result; // Unwrapped AES key
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 console.error("Azure crypto client failed to unwrap key:", err.message);
@@ -230,13 +241,14 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     }
 
     private async loadConfig(): Promise<void> {
-        this.createConfigFileIfMissing();
+        await this.createConfigFileIfMissing();
 
         try {
             // Step 1: Read the config file
             let contents: Buffer = Buffer.alloc(0);
             try {
                 contents = readFileSync(this.defaultConfigFileLocation);
+                this.logger.info(`Loaded config file ${this.defaultConfigFileLocation}`);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 this.logger.error(`Failed to load config file ${this.defaultConfigFileLocation}: ${err.message}`);
@@ -244,7 +256,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             }
 
             if (contents.length === 0) {
-                this.logger.warning(`Empty config file ${this.defaultConfigFileLocation}`);
+                this.logger.warn(`Empty config file ${this.defaultConfigFileLocation}`);
             }
 
             // Step 2: Check if the content is plain JSON
@@ -317,7 +329,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             }
 
             // Step 4: Ensure the config file exists
-            this.createConfigFileIfMissing();
+            await this.createConfigFileIfMissing();
 
             // Step 5: Encrypt the config JSON and write to the file
             const blob = await this.encryptBuffer(JSON.stringify(this.config, null, 4));
@@ -339,7 +351,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             // Step 1: Read the config file
             ciphertext = readFileSync(this.defaultConfigFileLocation);
             if (ciphertext.length === 0) {
-                this.logger.warning(`Empty config file ${this.defaultConfigFileLocation}`);
+                this.logger.warn(`Empty config file ${this.defaultConfigFileLocation}`);
                 return "";
             }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -395,7 +407,6 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             // Log the error
             this.logger.error(`Failed to change the key to '${newKeyId}' for config '${this.defaultConfigFileLocation}': ${error.message}`);
 
-            // Rethrow the error with a specific message
             throw new Error(`Failed to change the key for ${this.defaultConfigFileLocation}`);
         }
         return true;
@@ -425,9 +436,9 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public readStorage(): Promise<Record<string, any>> {
+    public async readStorage(): Promise<Record<string, any>> {
         if (!this.config) {
-            this.loadConfig();
+            await this.loadConfig();
         }
         return Promise.resolve(this.config);
     }
@@ -458,24 +469,24 @@ export class AzureKeyValueStorage implements KeyValueStorage {
         } else {
             this.logger.debug(`Key ${key} not found in ${this.defaultConfigFileLocation}`);
         }
-        this.saveStorage(config);
+        await this.saveStorage(config);
         return Promise.resolve();
     }
 
     public async deleteAll(): Promise<void> {
         await this.readStorage();
         Object.keys(this.config).forEach(key => delete this.config[key]);
-        this.saveStorage({});
+        await this.saveStorage({});
         return Promise.resolve();
     }
 
-    public contains(key: string): Promise<boolean> {
-        const config = this.readStorage();
+    public async contains(key: string): Promise<boolean> {
+        const config = await this.readStorage();
         return Promise.resolve(key in Object.keys(config));
     }
 
-    public isEmpty(): Promise<boolean> {
-        const config = this.readStorage();
+    public async isEmpty(): Promise<boolean> {
+        const config = await this.readStorage();
         return Promise.resolve(Object.keys(config).length === 0);
     }
 }

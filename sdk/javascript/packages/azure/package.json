@@ -1,21 +1,22 @@
 {
   "name": "@keeper/secrets-manager-azure",
   "version": "0.1.0",
-  "description": "This package aims to have a working functionality of being able to store the keeper configuration as encrypted data by using a key from azure",
+  "description": "Keeper Secrets Manager Azure storage",
   "main": "dist/index.js",
-  "repository": "https://github.com/metron-labs/secrets-manager",
+  "repository": "https://github.com/Keeper-Security/secrets-manager",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "link-local": "yarn link",
+    "lint": "eslint 'src/**/*.ts'"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@azure/identity": "^4.6.0",
-    "@azure/keyvault-keys": "^4.9.0",
     "@keeper-security/secrets-manager-core": "^17.0.0"
   },
   "devDependencies": {
+    "@azure/identity": "^4.6.0",
+    "@azure/keyvault-keys": "^4.9.0",
     "@eslint/js": "^9.19.0",
     "@types/node": "^22.12.0",
     "@typescript-eslint/eslint-plugin": "^8.22.0",
