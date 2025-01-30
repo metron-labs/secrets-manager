@@ -20,15 +20,9 @@ Setup
 
 The Secrets Manager HSM modules are located in the Keeper Secrets Manager storage module which can be installed using pip
 
-> `pip3 install keeper-secrets-manager-storage`
+> `npm install @keeper-security/secrets-manager-azure`
 
-2. Install azure packages
-
-`azure-identity` and `azure-keyvault-keys` are prerequisites for the Azure Key Vault integration.  Install these on your machine using pip.
-
-> `pip3 install azure-identity azure-keyvault-keys`
-
-3. Configure Azure Connection
+2. Configure Azure Connection
 
 configuration variables can be provided as 
 
