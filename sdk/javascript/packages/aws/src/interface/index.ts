@@ -1,0 +1,1 @@
+export {DescribeKeyResponse} from './DescribeKeyResponse'
