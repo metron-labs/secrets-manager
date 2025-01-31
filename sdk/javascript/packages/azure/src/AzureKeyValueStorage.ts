@@ -12,19 +12,18 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     keyId!: string;
     azureCredentials!: ClientSecretCredential | DefaultAzureCredential;
     cryptoClient!: CryptographyClient;
-    last_saved_config_hash!: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    config: Record<string, any> = {};
     lastSavedConfigHash!: string;
+    config: Record<string, string> | null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     logger: any;
+    configFileLocation: string;
 
     /**
      * Initializes and returns a default logger with typed methods.
      * 
      * @returns {Console | { info: (message: string) => void; warn: (message: string) => void; error: (message: string) => void; }}
      */
-    getDefaultLogger(): Console | { info: (message: string) => void; warn: (message: string) => void; error: (message: string) => void } {
+    getDefaultLogger(): Console | { info: (message: string) => void; warn: (message: string) => void; error: (message: string) => void; } {
         this.logger = console;
         if (!this.logger) {
             return {
@@ -40,16 +39,19 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     getString(key: string): Promise<string | undefined> {
         return this.get(key);
     }
+
     saveString(key: string, value: string): Promise<void> {
         return this.set(key, value);
     }
+
     async getBytes(key: string): Promise<Uint8Array | undefined> {
         const bytesString = await this.get(key);
         if (bytesString) {
-            return Promise.resolve(platform.base64ToBytes(bytesString));
+            return platform.base64ToBytes(bytesString);
         }
-        return Promise.resolve(undefined);
+        return undefined;
     }
+
     saveBytes(key: string, value: Uint8Array): Promise<void> {
         const bytesString = platform.bytesToBase64(value);
         return this.set(key, bytesString);
@@ -58,6 +60,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     getObject?<T>(key: string): Promise<T | undefined> {
         return this.getString(key).then((value) => value ? JSON.parse(value) as T : undefined);
     }
+
     saveObject?<T>(key: string, value: T): Promise<void> {
         const json = JSON.stringify(value);
         return this.saveString(key, json);
@@ -67,31 +70,30 @@ export class AzureKeyValueStorage implements KeyValueStorage {
         /**
         Initilaizes AzureKeyValueStorage
 
-        key_id URI of the master key - if missing read from env KSM_AZ_KEY_ID
-        key_id URI may also include version in case key has auto rotate enabled
-        ex. key_id = "https://<your vault>.vault.azure.net/keys/<key name>/<key_version>"
+        keyId URI of the master key - if missing read from env KSM_AZ_KEY_ID
+        keyId URI may also include version in case key has auto rotate enabled
+        ex. keyId = "https://<your vault>.vault.azure.net/keys/<key name>/<key_version>"
         The master key needs WrapKey, UnwrapKey privileges
 
-        config_file_location provides custom config file location - if missing read from env KSM_CONFIG_FILE
-        az_session_config optional az session config - if missing use default env variables
+        configFileLocation provides custom config file location - if missing read from env KSM_CONFIG_FILE
+        azSessionConfig optional az session config - if missing use default env variables
         https://learn.microsoft.com/en-us/dotnet/api/azure.identity.environmentcredential
         **/
-        this.defaultConfigFileLocation = configFileLocation ?? process.env.KSM_CONFIG_FILE ?? this.defaultConfigFileLocation;
+        this.configFileLocation = configFileLocation ?? process.env.KSM_CONFIG_FILE ?? this.defaultConfigFileLocation;
         this.keyId = keyId ?? process.env.KSM_AZ_KEY_ID;
         this.getDefaultLogger();
 
         if (azSessionConfig) {
-            const hasAzureSessionConfig = azSessionConfig.tenant_id && azSessionConfig.client_id && azSessionConfig.client_secret;
+            const hasAzureSessionConfig = azSessionConfig.tenantId && azSessionConfig.clientId && azSessionConfig.clientSecret;
             if (hasAzureSessionConfig) {
-                this.azureCredentials = new ClientSecretCredential(azSessionConfig.tenant_id, azSessionConfig.client_id, azSessionConfig.client_secret);
+                this.azureCredentials = new ClientSecretCredential(azSessionConfig.tenantId, azSessionConfig.clientId, azSessionConfig.clientSecret);
             } else {
                 this.azureCredentials = new DefaultAzureCredential();
             }
         }
         this.cryptoClient = new CryptographyClient(this.keyId, this.azureCredentials);
 
-        this.last_saved_config_hash = "";
-        this.config = {};
+        this.lastSavedConfigHash = "";
     }
 
     async init() {
@@ -108,7 +110,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             this.keyId = newKeyId;
             this.cryptoClient = new CryptographyClient(this.keyId, this.azureCredentials);
 
-            await saveConfig(this,{}, true);
+            await saveConfig(this, {}, true);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             // Restore the previous key and crypto client if the operation fails
@@ -116,24 +118,22 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             this.cryptoClient = oldCryptoClient;
 
             // Log the error
-            this.logger.error(`Failed to change the key to '${newKeyId}' for config '${this.defaultConfigFileLocation}': ${error.message}`);
+            this.logger.error(`Failed to change the key to "${newKeyId}" for config "${this.configFileLocation}": ${error.message}`);
 
-            throw new Error(`Failed to change the key for ${this.defaultConfigFileLocation}`);
+            throw new Error(`Failed to change the key for ${this.configFileLocation}`);
         }
         return true;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public async readStorage(): Promise<Record<string, any>> {
+    public async readStorage(): Promise<Record<string, string>> {
         if (!this.config) {
             await loadConfig(this);
         }
         return Promise.resolve(this.config);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public saveStorage(updatedConfig: Record<string, any>): Promise<void> {
-        return saveConfig(this,updatedConfig);
+    public saveStorage(updatedConfig: Record<string, string>): Promise<void> {
+        return saveConfig(this, updatedConfig);
     }
 
     public async get(key: string): Promise<string> {
@@ -151,21 +151,19 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     public async delete(key: string): Promise<void> {
         const config = await this.readStorage();
 
-        if (key in Object.keys(config)) {
-            this.logger.debug(`Deleting key ${key} from ${this.defaultConfigFileLocation}`);
+        if (config[key]) {
+            this.logger.debug(`Deleting key ${key} from ${this.configFileLocation}`);
             delete config[key];
         } else {
-            this.logger.debug(`Key ${key} not found in ${this.defaultConfigFileLocation}`);
+            this.logger.debug(`Key ${key} not found in ${this.configFileLocation}`);
         }
         await this.saveStorage(config);
-        return Promise.resolve();
     }
 
     public async deleteAll(): Promise<void> {
         await this.readStorage();
         Object.keys(this.config).forEach(key => delete this.config[key]);
         await this.saveStorage({});
-        return Promise.resolve();
     }
 
     public async contains(key: string): Promise<boolean> {
