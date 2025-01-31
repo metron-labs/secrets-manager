@@ -145,7 +145,6 @@ export class AzureKeyValueStorage implements KeyValueStorage {
         const config = await this.readStorage();
         config[key] = value;
         await this.saveStorage(config);
-        return Promise.resolve();
     }
 
     public async delete(key: string): Promise<void> {
