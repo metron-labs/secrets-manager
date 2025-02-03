@@ -1,9 +1,8 @@
-import { AzureKeyValueStorage } from "./AzureKeyValueStorage";
-import { WrapResult } from "@azure/keyvault-keys";
+import { CryptographyClient, WrapResult } from "@azure/keyvault-keys";
 import { randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import { AES_256_GCM, BLOB_HEADER, LATIN1_ENCODING, UTF_8_ENCODING, RSA_OEAP } from "./constants";
 
-export async function encryptBuffer(azureKvStorage: AzureKeyValueStorage, message: string): Promise<Buffer> {
+export async function encryptBuffer(azureKvStorageCryptoClient: CryptographyClient, message: string): Promise<Buffer> {
     try {
         // Step 1: Generate a random 32-byte key
         const key = randomBytes(32);
@@ -20,7 +19,7 @@ export async function encryptBuffer(azureKvStorage: AzureKeyValueStorage, messag
         let wrappedKey;
         let response: WrapResult;
         try {
-            response = await azureKvStorage.cryptoClient.wrapKey(RSA_OEAP, key);
+            response = await azureKvStorageCryptoClient.wrapKey(RSA_OEAP, key);
             wrappedKey = response.result; // The wrapped (encrypted) AES key
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,7 +50,7 @@ export async function encryptBuffer(azureKvStorage: AzureKeyValueStorage, messag
 }
 
 
-export async function decryptBuffer(azureKeyValueStorage: AzureKeyValueStorage, ciphertext: Buffer): Promise<string> {
+export async function decryptBuffer(azureKeyValueStorageCryptoClient: CryptographyClient, ciphertext: Buffer): Promise<string> {
     try {
         // Step 1: Validate BLOB_HEADER
         const header = Buffer.from(ciphertext.subarray(0, 2));
@@ -102,7 +101,7 @@ export async function decryptBuffer(azureKeyValueStorage: AzureKeyValueStorage, 
         // Step 3: Unwrap the AES key using Azure Key Vault
         let key;
         try {
-            const response = await azureKeyValueStorage.cryptoClient.unwrapKey(RSA_OEAP, encryptedKey);
+            const response = await azureKeyValueStorageCryptoClient.unwrapKey(RSA_OEAP, encryptedKey);
             key = response.result; // Unwrapped AES key
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

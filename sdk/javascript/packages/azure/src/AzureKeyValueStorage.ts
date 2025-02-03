@@ -2,45 +2,38 @@ import { ClientSecretCredential, DefaultAzureCredential } from "@azure/identity"
 import { CryptographyClient } from "@azure/keyvault-keys";
 import { KeyValueStorage, platform } from "@keeper-security/secrets-manager-core";
 import { AzureSessionConfig } from "./AzureSessionConfig";
-import { loadConfig, saveConfig } from "./configHandler";
+import { createConfigFileIfMissing, loadConfig, saveConfig } from "./configHandler";
+import {Logger, defaultLogger} from "./Logger";
+import { createHash } from "crypto";
+import { encryptBuffer } from "./utils";
+import { promises as fs } from "fs";
 
 
 
 export class AzureKeyValueStorage implements KeyValueStorage {
 
-    defaultConfigFileLocation: string = "client-config.json";
-    keyId!: string;
-    azureCredentials!: ClientSecretCredential | DefaultAzureCredential;
-    cryptoClient!: CryptographyClient;
-    lastSavedConfigHash!: string;
-    config: Record<string, string> | null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    logger: any;
-    configFileLocation: string;
+    private defaultConfigFileLocation: string = "client-config.json";
+    private keyId!: string;
+    private azureCredentials!: ClientSecretCredential | DefaultAzureCredential;
+    private cryptoClient!: CryptographyClient;
+    private lastSavedConfigHash!: string;
+    private config: Record<string, string> | null;
+    logger: Logger;
+    private configFileLocation: string;
 
-    /**
-     * Initializes and returns a default logger with typed methods.
-     * 
-     * @returns {Console | { info: (message: string) => void; warn: (message: string) => void; error: (message: string) => void; }}
-     */
-    getDefaultLogger(): Console | { info: (message: string) => void; warn: (message: string) => void; error: (message: string) => void; } {
-        this.logger = console;
-        if (!this.logger) {
-            return {
-                info: (message: string) => console.info(`[INFO]: ${message}`),
-                warn: (message: string) => console.warn(`[WARN]: ${message}`),
-                error: (message: string) => console.error(`[ERROR]: ${message}`),
-            };
-        } else {
-            return this.logger;
+    private setLogger(logger: Logger | null) {
+        if (logger) {
+            this.logger = logger;
+        }else {
+            this.logger = defaultLogger;
         }
     }
 
-    getString(key: string): Promise<string | undefined> {
+    public getString(key: string): Promise<string | undefined> {
         return this.get(key);
     }
 
-    saveString(key: string, value: string): Promise<void> {
+    public saveString(key: string, value: string): Promise<void> {
         return this.set(key, value);
     }
 
@@ -52,21 +45,21 @@ export class AzureKeyValueStorage implements KeyValueStorage {
         return undefined;
     }
 
-    saveBytes(key: string, value: Uint8Array): Promise<void> {
+    public saveBytes(key: string, value: Uint8Array): Promise<void> {
         const bytesString = platform.bytesToBase64(value);
         return this.set(key, bytesString);
     }
 
-    getObject?<T>(key: string): Promise<T | undefined> {
+    public getObject?<T>(key: string): Promise<T | undefined> {
         return this.getString(key).then((value) => value ? JSON.parse(value) as T : undefined);
     }
 
-    saveObject?<T>(key: string, value: T): Promise<void> {
+    public saveObject?<T>(key: string, value: T): Promise<void> {
         const json = JSON.stringify(value);
         return this.saveString(key, json);
     }
 
-    constructor(keyId: string, configFileLocation: string | null, azSessionConfig: AzureSessionConfig | null) {
+    constructor(keyId: string, configFileLocation: string | null, azSessionConfig: AzureSessionConfig | null, logger: Logger | null) {
         /**
         Initilaizes AzureKeyValueStorage
 
@@ -81,7 +74,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
         **/
         this.configFileLocation = configFileLocation ?? process.env.KSM_CONFIG_FILE ?? this.defaultConfigFileLocation;
         this.keyId = keyId ?? process.env.KSM_AZ_KEY_ID;
-        this.getDefaultLogger();
+        this.setLogger(logger);
 
         if (azSessionConfig) {
             const hasAzureSessionConfig = azSessionConfig.tenantId && azSessionConfig.clientId && azSessionConfig.clientSecret;
@@ -174,4 +167,63 @@ export class AzureKeyValueStorage implements KeyValueStorage {
         const config = await this.readStorage();
         return Promise.resolve(Object.keys(config).length === 0);
     }
+
+    public getConfig(): Record<string, string> {
+        return { ...this.config }; // Return a copy to prevent direct mutation
+    }
+
+    public setConfig(updatedConfig: Record<string, string>): void {
+        this.config = { ...updatedConfig };
+        this.updateConfigHash();
+    }
+
+    private updateConfigHash(): void {
+        const configJson = JSON.stringify(this.config, null, 4);
+        this.lastSavedConfigHash = createHash("md5").update(configJson).digest("hex");
+    }
+
+    public getConfigHash(): string {
+        return this.lastSavedConfigHash;
+    }
+
+    public setConfigHash(hash: string): void {
+        this.lastSavedConfigHash = hash;
+    }
+
+    public updateConfigIfChanged(updatedConfig: Record<string, string>): string {
+        if (Object.keys(updatedConfig).length === 0) {
+            return this.getConfigHash();
+        }
+
+        const updatedConfigJson = JSON.stringify(updatedConfig, null, 4);
+        const updatedConfigHash = createHash("md5").update(updatedConfigJson).digest("hex");
+
+        if (updatedConfigHash !== this.getConfigHash()) {
+            this.setConfig(updatedConfig);
+        }
+
+        return this.getConfigHash();
+    }
+
+    public getConfigFileLocation(): string {
+        return this.configFileLocation;
+    }
+
+    public async writeConfigToFile(): Promise<void> {
+        try {
+            await createConfigFileIfMissing(this); // Ensure file exists
+
+            const configJson = JSON.stringify(this.config, null, 4);
+            const blob = await encryptBuffer(this.cryptoClient, configJson);
+
+            await fs.writeFile(this.configFileLocation, blob);
+        } catch (err) {
+            console.error("Error writing config to file:", err instanceof Error ? err.message : err);
+        }
+    }
+
+    public getCryptoClient(): CryptographyClient {
+        return this.cryptoClient;
+    }
+    
 }
