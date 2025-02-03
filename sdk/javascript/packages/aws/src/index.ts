@@ -7,9 +7,11 @@ import { randomBytes, createCipheriv, createDecipheriv, createHash } from 'crypt
 import { KeyValueStorage, platform } from "@keeper-security/secrets-manager-core";
 
 import {AWSSessionConfig} from './AwsSessionConfig';
-import {KMSClient} from '@aws-sdk/client-kms';
+import {EncryptResponse, KMSClient} from '@aws-sdk/client-kms';
 import {AWSKeyValueStorageError} from './error';
 import { AwsKmsClient } from "./AwsKmsClient";
+import { EncryptionAlgorithmEnum } from "./enum";
+import { DecryptResponse } from "./interface/DecryptResponse";
 
 
 export class AWSKeyValueStorage implements KeyValueStorage {
@@ -24,6 +26,7 @@ export class AWSKeyValueStorage implements KeyValueStorage {
     lastSavedConfigHash!: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     logger: any;
+    encryptionAlgoithm : string;
     awsCredentials!: AWSSessionConfig;
 
     getDefaultLogger() {
@@ -95,11 +98,8 @@ export class AWSKeyValueStorage implements KeyValueStorage {
         }
         this.cryptoClient = new AwsKmsClient(this.awsCredentials);
 
-        this.last_saved_config_hash = "";
-        this.config = {};
-        this.loadConfig().then(() => {
-            this.logger.info(`Loaded config file from ${this.defaultConfigFileLocation}`);
-        })
+        this.lastSavedConfigHash = "";
+        this.encryptionAlgoithm = EncryptionAlgorithmEnum.RSAES_OAEP_SHA_256 // default recommended by AWS
     }
 
     async init() {
@@ -110,24 +110,41 @@ export class AWSKeyValueStorage implements KeyValueStorage {
 
     private async encryptBuffer(message: string): Promise<Buffer> {
         try {
-            let response = this.cryptoClient.encryptCommand({
-                
-            })
+            const encryptCommandOptions = {
+                KeyId : this.keyId,
+                Plaintext : message,
+                EncryptionAlgorithm : this.encryptionAlgoithm
+            }
+            let response : EncryptResponse = await this.cryptoClient.encryptCommand(encryptCommandOptions);
+            const CiphertextBlob = response.CiphertextBlob ?? "";
+            if (CiphertextBlob.length === 0) {
+                console.error("AWS KMS Storage failed to encrypt: CiphertextBlob is empty");
+                return Buffer.alloc(0); // Return empty buffer in case of an error
+            }
+            return Buffer.from(CiphertextBlob)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            console.error("Azure KeyVault Storage failed to encrypt:", err.message);
+            console.error("AWS KMS Storage failed to encrypt:", err.message);
             return Buffer.alloc(0); // Return empty buffer in case of an error
         }
     }
 
     private async decryptBuffer(ciphertext: Buffer): Promise<string> {
         try{
-            let response = this.cryptoClient.decryptCommand({
+            const decryptCommandOptions = {
                 "CiphertextBlob": ciphertext,
+                "EncryptionAlgorithm": this.encryptionAlgoithm,
                 "KeyId": this.keyId
-            }); 
-            let decryotedData = response['Plaintext']
-            return decryotedData.toString('utf-8')
+            }
+            let response: DecryptResponse = this.cryptoClient.decryptCommand(decryptCommandOptions); 
+            
+            let decryptedData = response.Plaintext ?? "";
+            if (decryptedData.length === 0) {
+                console.error("AWS KMS Storage failed to decrypt: decryptedData is empty");
+                return ""; // Return empty string in case of an error
+            }
+            
+            return decryptedData
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error("Azure KeyVault Storage failed to decrypt:", err.message);
