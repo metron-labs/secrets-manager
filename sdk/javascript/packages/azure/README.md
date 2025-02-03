@@ -124,3 +124,81 @@ Change Key used to encrypt the configuration file
     console.log("start")
     getKeeperRecords()
 ```
+
+## using custom logging if needed
+the module interfaces well with custom logging functionalities your program may have. If no logger is provided then console is chosen as default. Here is an example with `winston` logging framework
+
+```
+    import { getSecrets, initializeStorage, localConfigStorage } from '@keeper-security/secrets-manager-core';
+    import {AzureKeyValueStorage, AzureSessionConfig,Logger} from "@keeper/secrets-manager-azure";
+    import winston from "winston";
+
+    class WinstonLogger implements Logger {
+        private logger: winston.Logger;
+
+        constructor() {
+            this.logger = winston.createLogger({
+                level: "info",
+                format: winston.format.combine(
+                    winston.format.timestamp(),
+                    winston.format.printf(({ level, message, timestamp }) => {
+                        return `${timestamp} | ${level.toUpperCase()} | ${message}`;
+                    })
+                ),
+                transports: [new winston.transports.Console()]
+            });
+        }
+
+        info(message: string, ...meta: any[]): void {
+            this.logger.info(message, ...meta);
+        }
+
+        warn(message: string, ...meta: any[]): void {
+            this.logger.warn(message, ...meta);
+        }
+
+        error(message: string, ...meta: any[]): void {
+            this.logger.error(message, ...meta);
+        }
+
+        debug(message: string, ...meta: any[]): void {
+            this.logger.debug?.(message, ...meta);
+        }
+    }
+
+    const getKeeperRecords = async () => {
+
+        const tenant_id="<tenant_id>" 
+        const client_id="<client_id>"
+        const client_secret="<client-secret>"
+        const azureSessionConfig = new AzureSessionConfig(tenant_id, client_id, client_secret)
+
+        
+        let config_path = "/home/metron/Desktop/keeper_test/js/client-config.json"
+        let globalLogger = new WinstonLogger(); // one way to create a logger which intefraces perfectly with this integration
+        let globalLogger2 = winston.createLogger({transports: [new winston.transports.Console()]}); //second way to create a logger instance
+        
+        // oneTimeToken is used only once to initialize the storage
+        // after the first run, subsequent calls will use ksm-config.txt
+        const oneTimeToken = "US:kYKVGFJ2605-9UBF4VXd14AztMPXcxZ56zC9gr7O-Cw";
+        
+        const keyId = 'https://keeper-integration-kv.vault.azure.net/keys/azure-kv-test-rsa/<version>'
+        const keyId2 = "https://keeper-integration-kv.vault.azure.net/keys/keeper-test-rsa-2/<version>"
+        const storage = await new AzureKeyValueStorage(keyId2,config_path,azureSessionConfig,globalLogger).init();
+        // await storage.changeKey(keyId);
+        await initializeStorage(storage, oneTimeToken);
+        
+        // Using token only to generate a config (for later usage)
+        // requires at least one access operation to bind the token
+        //await getSecrets({storage: storage})
+        
+        const {records} = await getSecrets({storage: storage});
+        console.log(records)
+
+        const firstRecord = records[0];
+        const firstRecordPassword = firstRecord.data.fields.find((x: { type: string; }) => x.type === 'bankAccount');
+        console.log(firstRecordPassword.value[0]);
+    }
+    console.log("start")
+    getKeeperRecords()
+```
