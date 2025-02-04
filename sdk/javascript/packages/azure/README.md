@@ -18,11 +18,11 @@ Prerequisites
 Setup
 1. Install KSM Storage Module
 
-The Secrets Manager HSM modules are located in the Keeper Secrets Manager storage module which can be installed using pip
+The Secrets Manager azure modules are located in the Keeper Secrets Manager storage module which can be installed using npm
 
 > `npm install @keeper-security/secrets-manager-azure`
 
-2. Configure Azure Connection
+1. Configure Azure Connection
 
 configuration variables can be provided as 
 
@@ -49,11 +49,7 @@ Now that the Azure connection has been configured, you need to tell the Secrets 
 To do this, use AzureKeyValueStorage as your Secrets Manager storage in the SecretsManager constructor.
 
 The storage will require an Azure Key ID, as well as the name of the Secrets Manager configuration file which will be encrypted by Azure Key Vault.
-azure_keyvault_example_custom.ts
 
-from keeper_secrets_manager_core import SecretsManager
-from keeper_secrets_manager_hsm.storage_aws_kms import AwsKmsKeyValueStorage
- 
 ```
     import { getSecrets, initializeStorage, localConfigStorage } from '@keeper-security/secrets-manager-core';
     import {AzureKeyValueStorage, AzureSessionConfig} from "@keeper/secrets-manager-azure";
@@ -90,7 +86,7 @@ Using the Azure Key Vault Integration
 
 Once setup, the Secrets Manager Azure Key Vault integration supports all Secrets Manager Python SDK functionality.  Your code will need to be able to access the Azure Key Vault APIs in order to manage the decryption of the configuration file when run. 
 
-Change Key used to encrypt the configuration file
+### Change Key used to encrypt the configuration file
 ```
     import { getSecrets, initializeStorage, localConfigStorage } from '@keeper-security/secrets-manager-core';
     import {AzureKeyValueStorage, AzureSessionConfig} from "@keeper/secrets-manager-azure";
@@ -125,8 +121,8 @@ Change Key used to encrypt the configuration file
     getKeeperRecords()
 ```
 
-## using custom logging if needed
-the module interfaces well with custom logging functionalities your program may have. If no logger is provided then console is chosen as default. Here is an example with `winston` logging framework
+### using custom logging if needed
+The module interfaces well with custom logging functionalities your program may have. If no logger is provided then console is chosen as default. Here is an example with `winston` logging framework
 
 ```
     import { getSecrets, initializeStorage, localConfigStorage } from '@keeper-security/secrets-manager-core';
