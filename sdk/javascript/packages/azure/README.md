@@ -11,9 +11,9 @@ Features
 
 Prerequisites
 
-* Supports the Python and Javascript Secrets Manager SDK
-* Requires Azure packages: azure-identity and azure-keyvault-keys
-* Works with just RSA key types
+* Supports the Python and Javascript Secrets Manager SDK.
+* Requires Azure packages: azure-identity and azure-keyvault-keys.
+* Works with just RSA key types with `WrapKey` and `UnWrapKey` permissions.
 
 Setup
 1. Install KSM Storage Module
