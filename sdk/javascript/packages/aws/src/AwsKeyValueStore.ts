@@ -110,10 +110,6 @@ export class AWSKeyValueStorage implements KeyValueStorage {
         awsSessionConfig.regionName;
       if (hasAzureSessionConfig) {
         this.awsCredentials = awsSessionConfig;
-      } else {
-        throw new AWSKeyValueStorageError(
-          "Missing aws session config/session config is not valid"
-        );
       }
     }
     this.cryptoClient = new AwsKmsClient(this.awsCredentials).getCryptoClient();
@@ -122,13 +118,13 @@ export class AWSKeyValueStorage implements KeyValueStorage {
   }
 
   async init() {
-    await this.getkeyDetails();
+    await this.getKeyDetails();
     await this.loadConfig();
     this.logger.info(`Loaded config file from ${this.configFileLocation}`);
     return this; // Return the instance to allow chaining
   }
 
-  async getkeyDetails() {
+  async getKeyDetails() {
     try {
       const input = {
         KeyId: this.keyId,
@@ -378,7 +374,7 @@ export class AWSKeyValueStorage implements KeyValueStorage {
         await this.init();
       }
       this.keyId = newKeyId;
-      await this.getkeyDetails();
+      await this.getKeyDetails();
       await this.saveConfig({}, true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
