@@ -67,6 +67,8 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	private static final String AES = "AES";
 	private static final int GCM_TAG_LENGTH = 96;
 	private ObjectMapper objectMapper = new ObjectMapper();
+	
+	private AzureKeyValueStorage() {}
 
 	private AzureKeyValueStorage(String keyId, String configFileLocation, AzureSessionConfig azSessionConfig) throws Exception {
 		this.configFileLocation = configFileLocation != null ? configFileLocation

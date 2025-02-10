@@ -19,6 +19,8 @@ public class AzureSessionConfig {
     private String clientId;
     private String clientSecret;
     private String keyvaulturl;
+    
+    public AzureSessionConfig() {}
 
     public AzureSessionConfig(String tenantId, String clientId, String clientSecret, String keyvaulturl) {
         this.tenantId = tenantId;

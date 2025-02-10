@@ -1,6 +1,5 @@
 package com.keepersecurity.secretmanager.azurekv;
 
-
 /**
 #  _  __
 # | |/ /___ ___ _ __  ___ _ _ (R)
@@ -23,22 +22,20 @@ import com.google.gson.JsonSyntaxException;
 public class JsonUtils {
 
 	public static boolean isValidJsonFile(String filePath) {
-        try (FileReader reader = new FileReader(filePath)) {
-        	   JsonElement jsonElement = JsonParser.parseReader(reader);
-               return jsonElement != null; 
-           } catch (IOException e) {
-           } catch (JsonSyntaxException e) {
-           }
-        return false; 
-    }
-	
+		try (FileReader reader = new FileReader(filePath)) {
+			JsonElement jsonElement = JsonParser.parseReader(reader);
+			return jsonElement != null;
+		} catch (IOException | JsonSyntaxException e) {
+		}
+		return false;
+	}
+
 	public static boolean isValidJson(String jsonContent) {
-        try {
-            JsonElement jsonElement = JsonParser.parseString(jsonContent);
-            return jsonElement != null;
-        } catch (JsonSyntaxException e) {
-            System.out.println("Invalid JSON syntax: " + e.getMessage());
-        }
-        return false; 
-    }
+		try {
+			JsonElement jsonElement = JsonParser.parseString(jsonContent);
+			return jsonElement != null;
+		} catch (JsonSyntaxException e) {
+		}
+		return false;
+	}
 }
