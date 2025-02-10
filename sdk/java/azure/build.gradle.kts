@@ -21,8 +21,6 @@ dependencies {
 	implementation("com.azure:azure-identity:1.15.0")
 	implementation("com.azure:azure-security-keyvault-keys:4.9.2")
 	implementation("com.google.code.gson:gson:2.12.1")
-	implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
-	
 	
     // Use JUnit Jupiter for testing.
     testImplementation(libs.junit.jupiter)
@@ -43,6 +41,53 @@ java {
     }
 }
 
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            artifactId = project.rootProject.name
+            from(components["java"])
+            versionMapping {
+                usage("java-api") {
+                    fromResolutionOf("runtimeClasspath")
+                }
+                usage("java-runtime") {
+                    fromResolutionResult()
+                }
+            }
+
+            pom {
+                name.set("Keeper Secrets Manager")
+                description.set("Keeper Secrets Manager is a component of the Keeper Enterprise platform. " +
+                        "It provides your DevOps, IT Security and software development teams with a fully cloud-based, " +
+                        "Zero-Knowledge platform for managing all of your infrastructure secrets such as API keys, " +
+                        "Database passwords, access keys, certificates and any type of confidential data.")
+                url.set("https://github.com/Keeper-Security/secrets-manager")
+                licenses {
+                    license {
+                        name.set("MIT")
+                        url.set("https://opensource.org/licenses/MIT")
+                    }
+                }
+                contributors {
+                    contributor {
+                        name.set("Craig Lurey")
+                        url.set("https://github.com/craiglurey")
+                    }
+                    contributor {
+                        name.set("Sergey Aldoukhov")
+                        url.set("https://github.com/saldoukhov")
+                    }
+                    contributor {
+                        name.set("Maksim Ustinov")
+                        url.set("https://github.com/maksimu")
+                    }
+                }
+
+            }
+
+        }
+    }
+    
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
