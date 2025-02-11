@@ -4,18 +4,18 @@ import { AES_256_GCM, BLOB_HEADER, LATIN1_ENCODING, UTF_8_ENCODING, RSA_OEAP } f
 
 export async function encryptBuffer(azureKvStorageCryptoClient: CryptographyClient, message: string): Promise<Buffer> {
     try {
-        // Step 1: Generate a random 32-byte key
+        // Generate a random 32-byte key
         const key = randomBytes(32);
 
-        // Step 2: Create AES-GCM cipher instance
+        // Create AES-GCM cipher instance
         const nonce = randomBytes(16); // AES-GCM requires a 16-byte nonce
         const cipher = createCipheriv(AES_256_GCM, key, nonce);
 
-        // Step 3: Encrypt the message
+        // Encrypt the message
         const ciphertext = Buffer.concat([cipher.update(Buffer.from(message, UTF_8_ENCODING)), cipher.final()]);
         const tag = cipher.getAuthTag();
 
-        // Step 4: Wrap the AES key using Azure Key Vault
+        // Wrap the AES key using Azure Key Vault
         let wrappedKey;
         let response: WrapResult;
         try {
@@ -28,7 +28,7 @@ export async function encryptBuffer(azureKvStorageCryptoClient: CryptographyClie
             return Buffer.alloc(0); // Return empty buffer in case of an error
         }
 
-        // Step 5: Build the blob
+        // Build the blob
         const parts = [wrappedKey, nonce, tag, ciphertext];
 
         const buffers: Buffer[] = [];
@@ -52,7 +52,7 @@ export async function encryptBuffer(azureKvStorageCryptoClient: CryptographyClie
 
 export async function decryptBuffer(azureKeyValueStorageCryptoClient: CryptographyClient, ciphertext: Buffer): Promise<string> {
     try {
-        // Step 1: Validate BLOB_HEADER
+        // Validate BLOB_HEADER
         const header = Buffer.from(ciphertext.subarray(0, 2));
         if (!header.equals(Buffer.from(BLOB_HEADER, LATIN1_ENCODING))) {
             return ""; // Invalid header
@@ -64,7 +64,7 @@ export async function decryptBuffer(azureKeyValueStorageCryptoClient: Cryptograp
         let tag: Buffer = Buffer.alloc(0);
         let encryptedText: Buffer = Buffer.alloc(0);
 
-        // Step 2: Parse the ciphertext into its components
+        // Parse the ciphertext into its components
         for (let i = 1; i <= 4; i++) {
             const sizeBuffer = ciphertext.subarray(pos, pos + 2); // Read the size (2 bytes)
             pos += sizeBuffer.length;
@@ -98,7 +98,7 @@ export async function decryptBuffer(azureKeyValueStorageCryptoClient: Cryptograp
             }
         }
 
-        // Step 3: Unwrap the AES key using Azure Key Vault
+        // Unwrap the AES key using Azure Key Vault
         let key;
         try {
             const response = await azureKeyValueStorageCryptoClient.unwrapKey(RSA_OEAP, encryptedKey);
@@ -110,7 +110,7 @@ export async function decryptBuffer(azureKeyValueStorageCryptoClient: Cryptograp
             return ""; // Return empty string in case of an error
         }
 
-        // Step 4: Decrypt the message using AES-GCM
+        // Decrypt the message using AES-GCM
         const decipher = createDecipheriv(AES_256_GCM, key, nonce);
         decipher.setAuthTag(tag);
 
@@ -119,7 +119,7 @@ export async function decryptBuffer(azureKeyValueStorageCryptoClient: Cryptograp
             decipher.final(),
         ]);
 
-        // Step 5: Convert decrypted data to a UTF-8 string
+        // Convert decrypted data to a UTF-8 string
         return decrypted.toString(UTF_8_ENCODING);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
