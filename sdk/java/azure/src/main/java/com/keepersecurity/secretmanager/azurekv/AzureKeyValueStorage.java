@@ -3,7 +3,7 @@ package com.keepersecurity.secretmanager.azurekv;
 import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.security.keyvault.keys.KeyClient;
-import com.azure.security.keyvault.keys.KeyClientBuilder;
+//import com.azure.security.keyvault.keys.KeyClientBuilder;
 import com.azure.security.keyvault.keys.cryptography.CryptographyClient;
 import com.azure.security.keyvault.keys.cryptography.CryptographyClientBuilder;
 import com.azure.security.keyvault.keys.cryptography.models.KeyWrapAlgorithm;
@@ -61,20 +61,16 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	private String configFileLocation;
 	Map<String, Object> configMap;
 
-	private static final byte[] BLOB_HEADER = { (byte) 0xFF, (byte) 0xFF };
-	private static final int BLOCK_SIZE = 16;
-	private static final String AES_GCM = "AES/GCM/NoPadding";
-	private static final String AES = "AES";
-	private static final int GCM_TAG_LENGTH = 96;
 	private ObjectMapper objectMapper = new ObjectMapper();
 	
 	private AzureKeyValueStorage() {}
 
-	private AzureKeyValueStorage(String keyId, String configFileLocation, AzureSessionConfig azSessionConfig) throws Exception {
+	private AzureKeyValueStorage(String keyId, String configFileLocation, AzureSessionConfig azSessionConfig)
+			throws Exception {
 		this.configFileLocation = configFileLocation != null ? configFileLocation
-				: System.getenv("KSM_CONFIG_FILE") != null ? System.getenv("KSM_CONFIG_FILE")
+				: System.getenv(Constants.KSM_CONFIG_FILE) != null ? System.getenv(Constants.KSM_CONFIG_FILE)
 						: this.defaultConfigFileLocation;
-		this.keyId = keyId != null ? keyId : System.getenv("KSM_AZ_KEY_ID");
+		this.keyId = keyId != null ? keyId : System.getenv(Constants.KSM_AZ_KEY_ID);
 		tokencredential = getSecretCredential(azSessionConfig);
 		cryptoClient = new CryptographyClientBuilder().credential(tokencredential).keyIdentifier(keyId).buildClient();
 		loadConfig();
@@ -92,10 +88,10 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	 * @param tokencredential
 	 * @return
 	 */
-	public static KeyClient getSecretClient(AzureSessionConfig azSessionConfig, TokenCredential tokencredential) {
-		return new KeyClientBuilder().vaultUrl(azSessionConfig.getKeyVaultUrl()).credential(tokencredential)
-				.buildClient();
-	}
+//	private static KeyClient getSecretClient(AzureSessionConfig azSessionConfig, TokenCredential tokencredential) {
+//		return new KeyClientBuilder().vaultUrl(azSessionConfig.getKeyVaultUrl()).credential(tokencredential)
+//				.buildClient();
+//	}
 
 	/**
 	 * 
@@ -122,27 +118,33 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	private Cipher getGCMCipher(int mode, byte[] iv, byte[] key) throws NoSuchPaddingException, NoSuchAlgorithmException,
 			InvalidAlgorithmParameterException, InvalidKeyException, InvalidKeySpecException {
 		
-		Cipher cipher = Cipher.getInstance(AES_GCM);
-		GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-		SecretKeySpec keySpec = new SecretKeySpec(key, AES);
+		Cipher cipher = Cipher.getInstance(Constants.AES_GCM);
+		GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(Constants.GCM_TAG_LENGTH, iv);
+		SecretKeySpec keySpec = new SecretKeySpec(key, Constants.AES);
 		cipher.init(mode, keySpec, gcmParameterSpec);
 		return cipher;
 	}
 	
+	/**
+	 * 
+	 * @param message
+	 * @return
+	 * @throws Exception
+	 */
 	private byte[] encryptBuffer(String message) throws Exception {
 
-		byte[] nance = new byte[BLOCK_SIZE];
-		byte[] key = new byte[32];
+		byte[] nance = new byte[Constants.BLOCK_SIZE];
+		byte[] key = new byte[Constants.KEY_SIZE];
 		Cipher cipher = getGCMCipher(Cipher.ENCRYPT_MODE, key, nance);
 		byte[] ciphertext = cipher.doFinal(message.getBytes());
 		System.out.println("Done json encryption using AES............");
-		byte[] tag = cipher.getIV();
 		
+		byte[] tag = cipher.getIV();
 		byte[] encryptedKey = cryptoClient.wrapKey(KeyWrapAlgorithm.RSA_OAEP, key).getEncryptedKey();
 		System.out.println("Warpped encrypted using azure RSA key............");
 
 		ByteArrayOutputStream blob = new ByteArrayOutputStream();
-		blob.write(BLOB_HEADER);
+		blob.write(Constants.BLOB_HEADER);
 		writeLengthPrefixed(blob, encryptedKey);
 		writeLengthPrefixed(blob, nance);
 		writeLengthPrefixed(blob, tag);
@@ -178,7 +180,6 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 				
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
 		}
 	}
 
@@ -209,7 +210,6 @@ public class AzureKeyValueStorage implements KeyValueStorage{
             configMap = objectMapper.readValue(configJson, new TypeReference<Map<String, Object>>(){});
 			saveConfig(configMap);
 		}
-		
 	}
 
 	/**
@@ -233,9 +233,9 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	private String decryptBuffer(byte[] encryptedData) throws Exception {
 		ByteArrayInputStream blobInputStream = new ByteArrayInputStream(encryptedData);
 
-		byte[] header = new byte[BLOB_HEADER.length];
+		byte[] header = new byte[Constants.BLOB_HEADER.length];
 		blobInputStream.read(header);
-		if (!MessageDigest.isEqual(header, BLOB_HEADER)) {
+		if (!MessageDigest.isEqual(header, Constants.BLOB_HEADER)) {
 			throw new IllegalArgumentException("Invalid blob header");
 		}
 		byte[] encryptedKey = readLengthPrefixed(blobInputStream);
