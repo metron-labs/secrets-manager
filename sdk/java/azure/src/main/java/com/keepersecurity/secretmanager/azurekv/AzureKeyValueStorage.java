@@ -1,16 +1,14 @@
 package com.keepersecurity.secretmanager.azurekv;
 
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.util.logging.ClientLogger;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.security.keyvault.keys.KeyClient;
-//import com.azure.security.keyvault.keys.KeyClientBuilder;
 import com.azure.security.keyvault.keys.cryptography.CryptographyClient;
 import com.azure.security.keyvault.keys.cryptography.CryptographyClientBuilder;
 import com.azure.security.keyvault.keys.cryptography.models.KeyWrapAlgorithm;
 import com.azure.security.keyvault.keys.cryptography.models.UnwrapResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.keepersecurity.secretsManager.core.KeyValueStorage;
 
 
@@ -61,7 +59,7 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	private String configFileLocation;
 	Map<String, Object> configMap;
 
-	private ObjectMapper objectMapper = new ObjectMapper();
+	private static final ClientLogger LOGGER = new ClientLogger(AzureKeyValueStorage.class);
 	
 	private AzureKeyValueStorage() {}
 
@@ -85,17 +83,6 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	/**
 	 * 
 	 * @param azSessionConfig
-	 * @param tokencredential
-	 * @return
-	 */
-//	private static KeyClient getSecretClient(AzureSessionConfig azSessionConfig, TokenCredential tokencredential) {
-//		return new KeyClientBuilder().vaultUrl(azSessionConfig.getKeyVaultUrl()).credential(tokencredential)
-//				.buildClient();
-//	}
-
-	/**
-	 * 
-	 * @param azSessionConfig
 	 * @return
 	 */
 	private static TokenCredential getSecretCredential(AzureSessionConfig azSessionConfig) {
@@ -104,7 +91,82 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	}
 
 	/**
-	 * 
+	 * Load the configuration for encrypt/decrypt
+	 * @throws Exception
+	 */
+	private void loadConfig() throws Exception{
+		if (!JsonUtils.isValidJsonFile(configFileLocation)) {
+			String decryptedContent = decryptBuffer(readEncryptedJsonFile());
+				lastSavedConfigHash = calculateMd5(decryptedContent);
+				configMap = JsonUtils.convertToMap(decryptedContent); 
+		}else {
+			String configJson = Files.readString(Paths.get(configFileLocation));
+			lastSavedConfigHash = calculateMd5(configJson);
+            configMap = JsonUtils.convertToMap(configJson);  
+			saveConfig(configMap);
+		}
+	}
+	
+	/**
+	 * Save configuration encrypted configuration
+	 * @param updatedConfig
+	 */
+	private void saveConfig(Map<String, Object> updatedConfig) {
+		try {
+			if (JsonUtils.isValidJsonFile(defaultConfigFileLocation)) {
+				Path path = Paths.get(defaultConfigFileLocation);
+				save(Files.readString(path), updatedConfig);
+			}else {
+				String decryptedContent = decryptBuffer(readEncryptedJsonFile());
+				save(decryptedContent, updatedConfig);
+				
+			}
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage());
+		}
+	}
+	
+	private void save(String configJson, Map<String, Object> updatedConfig) {
+		if (updatedConfig != null && updatedConfig.size() > 0) {
+			try {
+				lastSavedConfigHash = calculateMd5(configJson);
+				String updatedConfigJson = JsonUtils.convertToString(updatedConfig);
+				updateConfigHash = calculateMd5(updatedConfigJson);
+				if (updateConfigHash != lastSavedConfigHash) {
+					lastSavedConfigHash = updateConfigHash;
+					configJson = updatedConfigJson;
+					configMap = JsonUtils.convertToMap(configJson); 
+				}
+				byte[] encryptedData = encryptBuffer(configJson);
+				Files.write(Paths.get(defaultConfigFileLocation), encryptedData);
+			} catch (Exception e) {
+
+			}
+		}
+	}
+	private byte[] readEncryptedJsonFile() throws Exception{
+		Path path = Paths.get(defaultConfigFileLocation);
+		if (!Files.exists(path)) {
+			createConfigFileIfMissing();
+		}
+		return Files.readAllBytes(path);
+		
+	}
+
+	/**
+	 * Write the encrypted configuration with key into file
+	 * @param stream
+	 * @param data
+	 * @throws IOException
+	 */
+	private void writeLengthPrefixed(ByteArrayOutputStream stream, byte[] data) throws IOException {
+		stream.write((data.length >> 8) & 0xFF);
+		stream.write(data.length & 0xFF);
+		stream.write(data);
+	}
+
+	/**
+	 * Generate GCM Cipher
 	 * @param mode
 	 * @param iv
 	 * @param key
@@ -126,7 +188,7 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	}
 	
 	/**
-	 * 
+	 * Encrypt the configuration
 	 * @param message
 	 * @return
 	 * @throws Exception
@@ -137,11 +199,9 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 		byte[] key = new byte[Constants.KEY_SIZE];
 		Cipher cipher = getGCMCipher(Cipher.ENCRYPT_MODE, key, nance);
 		byte[] ciphertext = cipher.doFinal(message.getBytes());
-		System.out.println("Done json encryption using AES............");
 		
 		byte[] tag = cipher.getIV();
 		byte[] encryptedKey = cryptoClient.wrapKey(KeyWrapAlgorithm.RSA_OAEP, key).getEncryptedKey();
-		System.out.println("Warpped encrypted using azure RSA key............");
 
 		ByteArrayOutputStream blob = new ByteArrayOutputStream();
 		blob.write(Constants.BLOB_HEADER);
@@ -151,81 +211,8 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 		writeLengthPrefixed(blob, ciphertext);
 		return blob.toByteArray();
 	}
-	 
-
-	   /**
-	    * 
-	    * @param updatedConfig
-	    */
-	private void saveConfig(Map<String, Object> updatedConfig) {
-		try {
-			System.out.println("Start json encryption............");
-			if (JsonUtils.isValidJsonFile(configFileLocation)) {
-				Path path = Paths.get(configFileLocation);
-				String configJson = Files.readString(path);
-				lastSavedConfigHash = calculateMd5(configJson);
-				
-				if(updatedConfig!=null && updatedConfig.size()>0) {
-					 String updatedConfigJson = objectMapper.writeValueAsString(updatedConfig);
-					 updateConfigHash = calculateMd5(updatedConfigJson);
-					 if(updateConfigHash!=lastSavedConfigHash) {
-						 lastSavedConfigHash = updateConfigHash;
-						 configJson = updatedConfigJson;
-					 }
-				}
-				byte[] encryptedData = encryptBuffer(configJson);
-				System.out.println("Write encrypted data to file.........");
-				Files.write(Paths.get(configFileLocation), encryptedData);
-			}else {
-				
-			}
-		} catch (Exception e) {
-		}
-	}
-
 	/**
-	 * 
-	 * @throws Exception
-	 */
-	private void loadConfig() throws Exception{
-		System.out.println("Inside loadconfig..........");
-		if (!JsonUtils.isValidJsonFile(configFileLocation)) {
-			// if File content is encrypted
-			Path path = Paths.get(configFileLocation);
-			if (!Files.exists(path)) {
-				createConfigFileIfMissing();
-			}
-			byte[] contents = Files.readAllBytes(path);
-			String decryptedContent = decryptBuffer(contents);
-			configMap = objectMapper.readValue(decryptedContent, new TypeReference<Map<String, Object>>(){});
-			System.out.println("Decrypted Content:: ");
-			System.out.println(decryptedContent);
-			if (JsonUtils.isValidJson(decryptedContent)) {
-				lastSavedConfigHash = calculateMd5(decryptedContent);
-			}
-		}else {
-			Path path = Paths.get(configFileLocation);
-			String configJson = Files.readString(path);
-			lastSavedConfigHash = calculateMd5(configJson);
-            configMap = objectMapper.readValue(configJson, new TypeReference<Map<String, Object>>(){});
-			saveConfig(configMap);
-		}
-	}
-
-	/**
-	 * 
-	 * @param stream
-	 * @param data
-	 * @throws IOException
-	 */
-	private void writeLengthPrefixed(ByteArrayOutputStream stream, byte[] data) throws IOException {
-		stream.write((data.length >> 8) & 0xFF);
-		stream.write(data.length & 0xFF);
-		stream.write(data);
-	}
-
-	/**
-	 * 
+	 * Decrypt the configuration
 	 * @param encryptedData
 	 * @return
 	 * @throws Exception
@@ -284,9 +271,12 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	 * @throws Exception
 	 */
 	private String calculateMd5(String input) throws Exception {
-		MessageDigest md = MessageDigest.getInstance("MD5");
-		byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
-		return Base64.getEncoder().encodeToString(digest);
+		if (JsonUtils.isValidJson(input)) {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
+			return Base64.getEncoder().encodeToString(digest);
+		} else
+			return input;
 	}
 
 	@Override
@@ -307,7 +297,8 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 
 	@Override
 	public void saveBytes(String key, byte[] value) {
-		// TODO Auto-generated method stub
+		configMap.put(key, new String(value, StandardCharsets.UTF_8));
+		saveConfig(configMap);
 		
 	}
 
@@ -320,9 +311,9 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	@Override
 	public String toString() {
 		try {
-			return objectMapper.writeValueAsString(configMap);
+			return JsonUtils.convertToString(configMap); 
 		} catch (JsonProcessingException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage());
 		}
 		return null;
 
