@@ -113,8 +113,8 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	 */
 	private void saveConfig(Map<String, Object> updatedConfig) {
 		try {
-			if (JsonUtils.isValidJsonFile(defaultConfigFileLocation)) {
-				Path path = Paths.get(defaultConfigFileLocation);
+			if (JsonUtils.isValidJsonFile(configFileLocation)) {
+				Path path = Paths.get(configFileLocation);
 				save(Files.readString(path), updatedConfig);
 			}else {
 				String decryptedContent = decryptBuffer(readEncryptedJsonFile());
@@ -138,14 +138,14 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 					configMap = JsonUtils.convertToMap(configJson); 
 				}
 				byte[] encryptedData = encryptBuffer(configJson);
-				Files.write(Paths.get(defaultConfigFileLocation), encryptedData);
+				Files.write(Paths.get(configFileLocation), encryptedData);
 			} catch (Exception e) {
 
 			}
 		}
 	}
 	private byte[] readEncryptedJsonFile() throws Exception{
-		Path path = Paths.get(defaultConfigFileLocation);
+		Path path = Paths.get(configFileLocation);
 		if (!Files.exists(path)) {
 			createConfigFileIfMissing();
 		}
