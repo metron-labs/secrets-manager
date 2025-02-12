@@ -10,4 +10,5 @@ public class Constants {
 	public static final int GCM_TAG_LENGTH = 96;
 	public static final String KSM_CONFIG_FILE = "KSM_CONFIG_FILE";
 	public static final String  KSM_AZ_KEY_ID = "KSM_AZ_KEY_ID";
+	public static final String  MD5  = "MD5";
 }

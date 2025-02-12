@@ -272,7 +272,7 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	 */
 	private String calculateMd5(String input) throws Exception {
 		if (JsonUtils.isValidJson(input)) {
-			MessageDigest md = MessageDigest.getInstance("MD5");
+			MessageDigest md = MessageDigest.getInstance(Constants.MD5);
 			byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
 			return Base64.getEncoder().encodeToString(digest);
 		} else
