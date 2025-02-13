@@ -1,4 +1,4 @@
-***Azure Key Vault***
+***Azure Key Vault**
 
 Protect Secrets Manager connection details with Azure Key Vault
 
@@ -7,11 +7,11 @@ Features
 
 * Encrypt and Decrypt your Keeper Secrets Manager configuration files with Azure Key Vault
 * Protect against unauthorized access to your Secrets Manager connections
-* Requires only minor changes to code for immediate protection.  Works with all Keeper Secrets Manager Python SDK functionality
+* Requires only minor changes to code for immediate protection.  Works with all Keeper Secrets Manager Javascript SDK functionality
 
 Prerequisites
 
-* Supports the Python and Javascript Secrets Manager SDK.
+* Supports the Javascript Secrets Manager SDK.
 * Requires Azure packages: azure-identity and azure-keyvault-keys.
 * Works with just RSA key types with `WrapKey` and `UnWrapKey` permissions.
 
@@ -22,7 +22,7 @@ The Secrets Manager azure modules are located in the Keeper Secrets Manager stor
 
 > `npm install @keeper-security/secrets-manager-azure`
 
-1. Configure Azure Connection
+2. Configure Azure Connection
 
 configuration variables can be provided as 
 
@@ -42,7 +42,7 @@ You will need an Azure App directory App to use the Azure Key Vault integration.
 
 For more information on Azure App Directory App registration and Permissions see the Azure documentation: https://learn.microsoft.com/en-us/azure/key-vault/general/authentication
 
-1. Add Azure Key Vault Storage to Your Code
+3. Add Azure Key Vault Storage to Your Code
 
 Now that the Azure connection has been configured, you need to tell the Secrets Manager SDK to utilize the KMS as storage.
 
@@ -63,11 +63,11 @@ The storage will require an Azure Key ID, as well as the name of the Secrets Man
         
         let config_path = "/home/metron/Desktop/keeper_test/js/client-config.json"
             
-        // oneTimeToken is used only once to initialize the storage
+        // Keeper's oneTimeToken is used only once to initialize the storage
         // after the first run, subsequent calls will use ksm-config.txt
-        const oneTimeToken = "US:kYKVGFJ2605-9UBF4VXd14AztMPXcxZ56zC9gr7O-Cw";
+        const oneTimeToken = "<One Time Token>";
         
-        const keyId = 'https://keeper-integration1-kv.vault.azure.net/keys/azure-kv-test-rsa/<version>'
+        const keyId = 'https://azure_keyvault_url/keys/<Key_name>/<version>'
         const storage = await new AzureKeyValueStorage(keyId,config_path,azureSessionConfig).init();
         await initializeStorage(storage, oneTimeToken);
         
@@ -84,7 +84,7 @@ The storage will require an Azure Key ID, as well as the name of the Secrets Man
 You're ready to use the KSM integration 👍
 Using the Azure Key Vault Integration
 
-Once setup, the Secrets Manager Azure Key Vault integration supports all Secrets Manager Python SDK functionality.  Your code will need to be able to access the Azure Key Vault APIs in order to manage the decryption of the configuration file when run. 
+Once setup, the Secrets Manager Azure Key Vault integration supports all Secrets Manager Javascript SDK functionality.  Your code will need to be able to access the Azure Key Vault APIs in order to manage the decryption of the configuration file when run. 
 
 ### Change Key used to encrypt the configuration file
 ```
@@ -100,12 +100,12 @@ Once setup, the Secrets Manager Azure Key Vault integration supports all Secrets
         
         let config_path = "/home/metron/Desktop/keeper_test/js/client-config.json"
         
-        // oneTimeToken is used only once to initialize the storage
+        // Keeper's oneTimeToken is used only once to initialize the storage
         // after the first run, subsequent calls will use ksm-config.txt
-        const oneTimeToken = "US:kYKVGFJ2605-9UBF4VXd14AztMPXcxZ56zC9gr7O-Cw";
+        const oneTimeToken = "<Keeper's One Time Token>";
         
-        const keyId = 'https://keeper-integration1-kv.vault.azure.net/keys/azure-kv-test-rsa/<version>'
-        const keyId2 = "https://keeper-integration1-kv.vault.azure.net/keys/keeper-test-rsa-2/<version>"
+        const keyId = "https://azure_keyvault_url/keys/<Key_name>/<version>"
+        const keyId2 = "https://azure_keyvault_url/keys/<Key_name>/<version>"
         const storage = await new AzureKeyValueStorage(keyId2,config_path,azureSessionConfig).init();
         await storage.changeKey(keyId2);
         await initializeStorage(storage, oneTimeToken);
@@ -178,8 +178,8 @@ The module interfaces well with custom logging functionalities your program may 
         // after the first run, subsequent calls will use ksm-config.txt
         const oneTimeToken = "US:kYKVGFJ2605-9UBF4VXd14AztMPXcxZ56zC9gr7O-Cw";
         
-        const keyId = 'https://keeper-integration-kv.vault.azure.net/keys/azure-kv-test-rsa/<version>'
-        const keyId2 = "https://keeper-integration-kv.vault.azure.net/keys/keeper-test-rsa-2/<version>"
+        const keyId = 'https://azure_keyvault_url/keys/<Key_name>/<version>'
+        const keyId2 = "https://azure_keyvault_url/keys/<Key_name>/<version>"
         const storage = await new AzureKeyValueStorage(keyId2,config_path,azureSessionConfig,globalLogger).init();
         // await storage.changeKey(keyId);
         await initializeStorage(storage, oneTimeToken);
