@@ -62,9 +62,20 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	private static final ClientLogger LOGGER = new ClientLogger(AzureKeyValueStorage.class);
 	
 	private AzureKeyValueStorage() {}
-
+	
+	/**
+	 * @param keyId URI of the master key - if missing read from env KSM_AZ_KEY_ID, keyId URI may also include version in case key has auto rotate enabled
+	 * ex. keyId = "https://<your vault>.vault.azure.net/keys/<key name>/fe4fdcab688c479a9aa80f01ffeac26" The master key needs WrapKey, UnwrapKey privileges
+	 * @param configFileLocation provides custom config file location - if missing read from env KSM_CONFIG_FILE 
+	 * @param azSessionConfig optional az session config - if missing use default env variables
+	 * @throws Exception
+	 * For more details
+	 *  https://learn.microsoft.com/en-us/dotnet/api/azure.identity.environmentcredential
+	 */
 	private AzureKeyValueStorage(String keyId, String configFileLocation, AzureSessionConfig azSessionConfig)
 			throws Exception {
+		
+		
 		this.configFileLocation = configFileLocation != null ? configFileLocation
 				: System.getenv(Constants.KSM_CONFIG_FILE) != null ? System.getenv(Constants.KSM_CONFIG_FILE)
 						: this.defaultConfigFileLocation;
@@ -188,7 +199,8 @@ public class AzureKeyValueStorage implements KeyValueStorage{
 	}
 	
 	/**
-	 * Encrypt the configuration
+	 *  Azure keyvault supports symmetric keys on Managed HSM only
+	 *  generate and wrap temp AES (GCM) 256-bit keys
 	 * @param message
 	 * @return
 	 * @throws Exception
