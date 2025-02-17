@@ -2,10 +2,15 @@
   "compilerOptions": {
     "module": "commonjs",
     "noImplicitAny": false,
-    "strict": true,
+    "strict": false,
     "target": "ES6",
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "sourceMap": true,
+    "baseUrl": "./",
+    "paths": {
+      "keeper-secrets-manager-aws": ["node_modules/keeper-secrets-manager-aws/dist/*"]
+    }
   },
 //  "include": [
 //    "src/**/*",
