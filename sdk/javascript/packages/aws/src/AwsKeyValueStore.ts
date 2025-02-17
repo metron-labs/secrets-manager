@@ -172,13 +172,14 @@ export class AWSKeyValueStorage implements KeyValueStorage {
           `Failed to load config file ${this.configFileLocation}`
         );
       }
+      let config: Record<string, string> | null = null;
 
       if (contents.length === 0) {
         this.logger.warn(`Empty config file ${this.configFileLocation}`);
+        contents = Buffer.from("{}");
       }
 
       // Check if the content is plain JSON
-      let config: Record<string, string> | null = null;
       let jsonError;
       let decryptionError = false;
       try {
