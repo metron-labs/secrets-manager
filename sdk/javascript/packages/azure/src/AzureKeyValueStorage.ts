@@ -1,7 +1,7 @@
 import { DefaultAzureCredential, ClientSecretCredential } from "@azure/identity";
 import { CryptographyClient } from "@azure/keyvault-keys";
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import {promises as fs} from "fs";
 import { dirname } from 'path';
 import { createHash } from 'crypto';
 import { KeyValueStorage, platform } from "@keeper-security/secrets-manager-core";
@@ -33,16 +33,19 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     getString(key: string): Promise<string | undefined> {
         return this.get(key);
     }
+
     saveString(key: string, value: string): Promise<void> {
         return this.set(key, value);
     }
+
     async getBytes(key: string): Promise<Uint8Array | undefined> {
         const bytesString = await this.get(key);
         if (bytesString) {
-            return Promise.resolve(platform.base64ToBytes(bytesString));
+            return platform.base64ToBytes(bytesString);
         }
-        return Promise.resolve(undefined);
+        return undefined;
     }
+
     saveBytes(key: string, value: Uint8Array): Promise<void> {
         const bytesString = platform.bytesToBase64(value);
         return this.set(key, bytesString);
@@ -51,6 +54,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     getObject?<T>(key: string): Promise<T | undefined> {
         return this.getString(key).then((value) => value ? JSON.parse(value) as T : undefined);
     }
+
     saveObject?<T>(key: string, value: T): Promise<void> {
         const json = JSON.stringify(value);
         return this.saveString(key, json);
@@ -83,7 +87,6 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             }
         }
         this.cryptoClient = new CryptographyClient(this.keyId, this.azureCredentials);
-
         this.lastSavedConfigHash = "";
     }
 
@@ -99,7 +102,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
             // Read the config file
             let contents: Buffer = Buffer.alloc(0);
             try {
-                contents = readFileSync(this.configFileLocation);
+                contents = await fs.readFile(this.configFileLocation);
                 this.logger.info(`Loaded config file ${this.configFileLocation}`);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
@@ -188,7 +191,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
 
             // Encrypt the config JSON and write to the file
             const blob = await encryptBuffer(this.cryptoClient, JSON.stringify(this.config, Object.keys(this.config).sort(), DEFAULT_JSON_INDENT));
-            writeFileSync(this.configFileLocation, blob);
+            await fs.writeFile(this.configFileLocation, blob);
 
             // Update the last saved config hash
             this.lastSavedConfigHash = configHash;
@@ -204,7 +207,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
 
         try {
             // Read the config file
-            ciphertext = readFileSync(this.configFileLocation);
+            ciphertext = await fs.readFile(this.configFileLocation);
             if (ciphertext.length === 0) {
                 this.logger.warn(`Empty config file ${this.configFileLocation}`);
                 return "";
@@ -222,7 +225,7 @@ export class AzureKeyValueStorage implements KeyValueStorage {
                 this.logger.error(`Failed to decrypt config file ${this.configFileLocation}`);
             } else if (autosave) {
                 // Optionally autosave the decrypted content
-                writeFileSync(this.configFileLocation, plaintext);
+                await fs.writeFile(this.configFileLocation, plaintext);
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
@@ -258,16 +261,16 @@ export class AzureKeyValueStorage implements KeyValueStorage {
     private async createConfigFileIfMissing(): Promise<void> {
         try {
             // Check if the config file already exists
-            if (!existsSync(this.configFileLocation)) {
+            if (await !fs.access(this.configFileLocation)) {
                 // Ensure the directory structure exists
                 const dir = dirname(this.configFileLocation);
-                if (!existsSync(dir)) {
-                    mkdirSync(dir, { recursive: true });
+                if (await !fs.access(dir)) {
+                    await fs.mkdir(dir, { recursive: true });
                 }
 
                 // Encrypt an empty configuration and write to the file
                 const blob = await encryptBuffer(this.cryptoClient, "{}");
-                writeFileSync(this.configFileLocation, blob);
+                await fs.writeFile(this.configFileLocation, blob);
                 console.log("Config file created at:", this.configFileLocation);
             } else {
                 console.log("Config file already exists at:", this.configFileLocation);
@@ -299,27 +302,24 @@ export class AzureKeyValueStorage implements KeyValueStorage {
         const config = await this.readStorage();
         config[key] = value;
         await this.saveStorage(config);
-        return Promise.resolve();
     }
 
     public async delete(key: string): Promise<void> {
         const config = await this.readStorage();
 
-        if (key in Object.keys(config)) {
+        if (config[key]) {
             this.logger.debug(`Deleting key ${key} from ${this.configFileLocation}`);
             delete config[key];
         } else {
             this.logger.debug(`Key ${key} not found in ${this.configFileLocation}`);
         }
         await this.saveStorage(config);
-        return Promise.resolve();
     }
 
     public async deleteAll(): Promise<void> {
         await this.readStorage();
         Object.keys(this.config).forEach(key => delete this.config[key]);
         await this.saveStorage({});
-        return Promise.resolve();
     }
 
     public async contains(key: string): Promise<boolean> {
