@@ -68,3 +68,4 @@ ansible.cfg
 !tsconfig.json
 package-lock.json
 .gradle/
+*.class

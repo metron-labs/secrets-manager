@@ -61,45 +61,28 @@ export async function decryptBuffer(azureKeyValueStorageCryptoClient: Cryptograp
         const parts: Buffer[] = [];
 
         // Parse the ciphertext into its components
-        for (let i = 0; i < 4; i++) {
+        for (let i = 1; i <= 4; i++) {
         const sizeBuffer = ciphertext.subarray(pos, pos + 2); // Read the size (2 bytes)
         if (sizeBuffer.length !== 2) {
         throw new Error("Invalid ciphertext structure: size buffer length mismatch.");
         }
         pos += 2;
-        // Parse the ciphertext into its components
-        for (let i = 1; i <= 4; i++) {
-            const sizeBuffer = ciphertext.subarray(pos, pos + 2); // Read the size (2 bytes)
-            pos += sizeBuffer.length;
 
-            if (sizeBuffer.length !== 2) break;
-
-            const partLength = sizeBuffer.readUInt16BE(0); // Parse length as big-endian
-            const part = ciphertext.subarray(pos, pos + partLength);
-            pos += part.length;
-
-            if (part.length !== partLength) {
-                throw new Error("Invalid ciphertext structure: part length mismatch.");
-            }
-
-            // Assign the parsed part to the appropriate variable
-            switch (i) {
-                case 1:
-                    encryptedKey = part;
-                    break;
-                case 2:
-                    nonce = part;
-                    break;
-                case 3:
-                    tag = part;
-                    break;
-                case 4:
-                    encryptedText = part;
-                    break;
-                default:
-                    console.error("Azure KeyVault decrypt buffer contains extra data.");
-            }
+        const partLength = sizeBuffer.readUInt16BE(0); // Parse length as big-endian
+        const part = ciphertext.subarray(pos, pos + partLength);
+        if (part.length !== partLength) {
+        throw new Error("Invalid ciphertext structure: part length mismatch.");
         }
+        pos += partLength;
+
+        parts.push(part);
+        }
+
+        if (parts.length !== 4) {
+        throw new Error("Invalid ciphertext structure: incorrect number of parts.");
+        }
+
+        const [encryptedKey, nonce, tag, encryptedText] = parts;
 
         // Step 3: Unwrap the AES key using Azure Key Vault
         let key;
