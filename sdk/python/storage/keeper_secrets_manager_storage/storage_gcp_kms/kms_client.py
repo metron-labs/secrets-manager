@@ -1,7 +1,7 @@
 from google.cloud import kms
 from google.oauth2 import service_account
 
-class GCPKSMClient:
+class GCPKMSClient:
     """
     A client for interacting with Google Cloud KMS.
     """
@@ -20,7 +20,7 @@ class GCPKSMClient:
 
         :param credentials_key_file_path: Path to the JSON key file containing
                                           the service account credentials.
-        :return: The GCPKSMClient instance with the new client.
+        :return: The GCPKMSClient instance with the new client.
         """
         credentials = service_account.Credentials.from_service_account_file(credentials_key_file_path)
         self.kms_client = kms.KeyManagementServiceClient(credentials=credentials)
@@ -32,7 +32,7 @@ class GCPKSMClient:
 
         :param client_email: The email address associated with the service account.
         :param private_key: The private key corresponding to the service account.
-        :return: The GCPKSMClient instance with the new client.
+        :return: The GCPKMSClient instance with the new client.
         """
         credentials = service_account.Credentials.from_service_account_info({
             "type": "service_account",
