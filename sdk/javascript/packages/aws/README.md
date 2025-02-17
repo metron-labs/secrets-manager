@@ -83,7 +83,7 @@ The storage will require an AWS Key ID, as well as the name of the Secrets Manag
 
         const awsSessionConfig2 = new AWSSessionConfig()
     
-        let config_path = "/home/metron/Desktop/keeper_test/js/client-config-aws.json"
+        let config_path = "<path to client-config-aws.json>"
         
         // oneTimeToken is used only once to initialize the storage
         // after the first run, subsequent calls will use ksm-config.txt

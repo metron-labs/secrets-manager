@@ -5,10 +5,7 @@ import {
   EncryptCommandInput,
   DecryptCommandOutput,
 } from "@aws-sdk/client-kms";
-import {
-  DecryptBufferOptions,
-  EncryptBufferOptions,
-} from "./interface/UtilOptions";
+import { DecryptBufferOptions, EncryptBufferOptions } from "./interface";
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import {
   AES_256_GCM,
@@ -57,12 +54,9 @@ export async function encryptBuffer(
     const buffers: Buffer[] = [];
     buffers[0] = Buffer.from(BLOB_HEADER, LATIN1_ENCODING);
     for (const part of parts) {
-      const partBuffer = Buffer.isBuffer(part)
-        ? part
-        : Buffer.from(part, LATIN1_ENCODING);
       const lengthBuffer = Buffer.alloc(2);
-      lengthBuffer.writeUInt16BE(partBuffer.length, 0);
-      buffers.push(lengthBuffer, partBuffer);
+      lengthBuffer.writeUInt16BE(part.length, 0);
+      buffers.push(lengthBuffer, part);
     }
     const blob = Buffer.concat(buffers);
 
@@ -82,48 +76,35 @@ export async function decryptBuffer(
     // Validate BLOB_HEADER
     const header = Buffer.from(options.ciphertext.subarray(0, 2));
     if (!header.equals(Buffer.from(BLOB_HEADER, LATIN1_ENCODING))) {
-      return ""; // Invalid header
+      throw new Error("Invalid ciphertext structure: missing header.");
     }
 
     let pos = 2;
-    let encryptedKey: Buffer = Buffer.alloc(0);
-    let nonce: Buffer = Buffer.alloc(0);
-    let tag: Buffer = Buffer.alloc(0);
-    let encryptedText: Buffer = Buffer.alloc(0);
+    const parts: Buffer[] = [];
 
     // Parse the ciphertext into its components
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 0; i < 4; i++) {
       const sizeBuffer = options.ciphertext.subarray(pos, pos + 2); // Read the size (2 bytes)
-      pos += sizeBuffer.length;
-
-      if (sizeBuffer.length !== 2) break;
+      if (sizeBuffer.length !== 2) {
+      throw new Error("Invalid ciphertext structure: size buffer length mismatch.");
+      }
+      pos += 2;
 
       const partLength = sizeBuffer.readUInt16BE(0); // Parse length as big-endian
       const part = options.ciphertext.subarray(pos, pos + partLength);
-      pos += part.length;
-
       if (part.length !== partLength) {
-        throw new Error("Invalid ciphertext structure: part length mismatch.");
+      throw new Error("Invalid ciphertext structure: part length mismatch.");
       }
+      pos += partLength;
 
-      // Assign the parsed part to the appropriate variable
-      switch (i) {
-        case 1:
-          encryptedKey = part;
-          break;
-        case 2:
-          nonce = part;
-          break;
-        case 3:
-          tag = part;
-          break;
-        case 4:
-          encryptedText = part;
-          break;
-        default:
-          console.error("Azure KeyVault decrypt buffer contains extra data.");
-      }
+      parts.push(part);
     }
+
+    if (parts.length !== 4) {
+      throw new Error("Invalid ciphertext structure: incorrect number of parts.");
+    }
+
+    const [encryptedKey, nonce, tag, encryptedText] = parts;
 
     const decryptCommandOptions = {
       EncryptionAlgorithm: options.encryptionAlgorithm,
@@ -141,9 +122,8 @@ export async function decryptBuffer(
     const response: DecryptCommandOutput = await options.cryptoClient.send(
       decryptCommandPayload
     );
-    const decryptedData = response.Plaintext;
+    const key = response.Plaintext;
 
-    const key = decryptedData;
     // Decrypt the message using AES-GCM
     const decipher = createDecipheriv(AES_256_GCM, key, nonce);
     decipher.setAuthTag(tag);
@@ -157,7 +137,7 @@ export async function decryptBuffer(
     return decrypted.toString(UTF_8_ENCODING);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
-    console.error("Azure KeyVault Storage failed to decrypt:", err.message);
+    console.error("AWS KMS Storage failed to decrypt:", err.message);
     return ""; // Return empty string in case of an error
   }
 }

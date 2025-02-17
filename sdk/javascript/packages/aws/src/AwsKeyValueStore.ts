@@ -89,7 +89,7 @@ export class AWSKeyValueStorage implements KeyValueStorage {
 
         keyId URI of the master key
         ex. keyId = "arn:aws:kms:ap-south-1:<account>:key/<keyIdValue>"
-        The master key needs EncryptCommand, DecryptiCommand privileges
+        The master key needs EncryptCommand, DecryptCommand privileges
         key types supported are all RSA keys and Symmetric Default keys
 
         configFileLocation provides custom config file location - if missing read from env KSM_CONFIG_FILE
@@ -100,15 +100,15 @@ export class AWSKeyValueStorage implements KeyValueStorage {
       configFileLocation ??
       process.env.KSM_CONFIG_FILE ??
       this.defaultConfigFileLocation;
-    this.keyId = keyId ?? process.env.KSM_AZ_KEY_ID;
+    this.keyId = keyId ?? process.env.KSM_AWS_KEY_ID;
     this.setLogger(logger);
 
     if (awsSessionConfig) {
-      const hasAzureSessionConfig =
+      const hasAWSSessionConfig =
         awsSessionConfig.awsAccessKeyId &&
         awsSessionConfig.awsSecretAccessKey &&
         awsSessionConfig.regionName;
-      if (hasAzureSessionConfig) {
+      if (hasAWSSessionConfig) {
         this.awsCredentials = awsSessionConfig;
       }
     }
@@ -315,8 +315,8 @@ export class AWSKeyValueStorage implements KeyValueStorage {
   }
 
   public async decryptConfig(autosave: boolean = true): Promise<string> {
-    let ciphertext: Buffer = Buffer.alloc(0);
-    let plaintext: string = "";
+    let ciphertext: Buffer;
+    let plaintext: string;
 
     try {
       // Read the config file

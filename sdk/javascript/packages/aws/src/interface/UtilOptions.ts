@@ -1,17 +1,15 @@
 import { KMSClient, EncryptionAlgorithmSpec } from "@aws-sdk/client-kms";
 
-export type EncryptBufferOptions = {
+export interface BufferOptions {
   keyId: string;
   encryptionAlgorithm: EncryptionAlgorithmSpec;
-  message: string;
   cryptoClient: KMSClient;
   keyType: string;
+}
+export interface EncryptBufferOptions extends BufferOptions {
+  message: string;
 };
 
-export type DecryptBufferOptions = {
-  keyId: string;
-  encryptionAlgorithm: EncryptionAlgorithmSpec;
+export interface DecryptBufferOptions extends BufferOptions {
   ciphertext: Buffer;
-  cryptoClient: KMSClient;
-  keyType: string;
 };
