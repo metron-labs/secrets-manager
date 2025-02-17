@@ -1,6 +1,6 @@
 import { CryptographyClient, WrapResult } from "@azure/keyvault-keys";
 import { randomBytes, createCipheriv, createDecipheriv } from "crypto";
-import { AES_256_GCM, BLOB_HEADER, LATIN1_ENCODING, UTF_8_ENCODING, RSA_OEAP } from "./constants";
+import { AES_256_GCM, BLOB_HEADER, LATIN1_ENCODING, UTF_8_ENCODING, RSA_OAEP } from "./constants";
 
 export async function encryptBuffer(azureKvStorageCryptoClient: CryptographyClient, message: string): Promise<Buffer> {
     try {
@@ -19,7 +19,7 @@ export async function encryptBuffer(azureKvStorageCryptoClient: CryptographyClie
         let wrappedKey;
         let response: WrapResult;
         try {
-            response = await azureKvStorageCryptoClient.wrapKey(RSA_OEAP, key);
+            response = await azureKvStorageCryptoClient.wrapKey(RSA_OAEP, key);
             wrappedKey = response.result; // The wrapped (encrypted) AES key
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,10 +34,9 @@ export async function encryptBuffer(azureKvStorageCryptoClient: CryptographyClie
         const buffers: Buffer[] = [];
         buffers[0] = Buffer.from(BLOB_HEADER, LATIN1_ENCODING);
         for (const part of parts) {
-            const partBuffer = Buffer.isBuffer(part) ? part : Buffer.from(part, LATIN1_ENCODING);
             const lengthBuffer = Buffer.alloc(2);
-            lengthBuffer.writeUInt16BE(partBuffer.length, 0);
-            buffers.push(lengthBuffer, partBuffer);
+            lengthBuffer.writeUInt16BE(part.length, 0);
+            buffers.push(lengthBuffer, part);
         }
         const blob = Buffer.concat(buffers);
 
@@ -55,53 +54,40 @@ export async function decryptBuffer(azureKeyValueStorageCryptoClient: Cryptograp
         // Validate BLOB_HEADER
         const header = Buffer.from(ciphertext.subarray(0, 2));
         if (!header.equals(Buffer.from(BLOB_HEADER, LATIN1_ENCODING))) {
-            return ""; // Invalid header
+            throw new Error("Invalid ciphertext structure: missing header."); // Invalid header
         }
 
         let pos = 2;
-        let encryptedKey: Buffer = Buffer.alloc(0);
-        let nonce: Buffer = Buffer.alloc(0);
-        let tag: Buffer = Buffer.alloc(0);
-        let encryptedText: Buffer = Buffer.alloc(0);
+        const parts: Buffer[] = [];
 
         // Parse the ciphertext into its components
         for (let i = 1; i <= 4; i++) {
-            const sizeBuffer = ciphertext.subarray(pos, pos + 2); // Read the size (2 bytes)
-            pos += sizeBuffer.length;
+        const sizeBuffer = ciphertext.subarray(pos, pos + 2); // Read the size (2 bytes)
+        if (sizeBuffer.length !== 2) {
+        throw new Error("Invalid ciphertext structure: size buffer length mismatch.");
+        }
+        pos += 2;
 
-            if (sizeBuffer.length !== 2) break;
+        const partLength = sizeBuffer.readUInt16BE(0); // Parse length as big-endian
+        const part = ciphertext.subarray(pos, pos + partLength);
+        if (part.length !== partLength) {
+        throw new Error("Invalid ciphertext structure: part length mismatch.");
+        }
+        pos += partLength;
 
-            const partLength = sizeBuffer.readUInt16BE(0); // Parse length as big-endian
-            const part = ciphertext.subarray(pos, pos + partLength);
-            pos += part.length;
-
-            if (part.length !== partLength) {
-                throw new Error("Invalid ciphertext structure: part length mismatch.");
-            }
-
-            // Assign the parsed part to the appropriate variable
-            switch (i) {
-                case 1:
-                    encryptedKey = part;
-                    break;
-                case 2:
-                    nonce = part;
-                    break;
-                case 3:
-                    tag = part;
-                    break;
-                case 4:
-                    encryptedText = part;
-                    break;
-                default:
-                    console.error("Azure KeyVault decrypt buffer contains extra data.");
-            }
+        parts.push(part);
         }
 
-        // Unwrap the AES key using Azure Key Vault
+        if (parts.length !== 4) {
+        throw new Error("Invalid ciphertext structure: incorrect number of parts.");
+        }
+
+        const [encryptedKey, nonce, tag, encryptedText] = parts;
+
+        // Step 3: Unwrap the AES key using Azure Key Vault
         let key;
         try {
-            const response = await azureKeyValueStorageCryptoClient.unwrapKey(RSA_OEAP, encryptedKey);
+            const response = await azureKeyValueStorageCryptoClient.unwrapKey(RSA_OAEP, encryptedKey);
             key = response.result; // Unwrapped AES key
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

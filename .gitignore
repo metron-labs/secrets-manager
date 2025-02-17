@@ -61,8 +61,11 @@ venv.bak/
 # Don't add Config files
 keeper.ini*
 *config*.json
+!tsconfig.json
+package-lock.json
 .secrets
 ansible.cfg
 !tsconfig.json
 package-lock.json
 .gradle/
+*.class
