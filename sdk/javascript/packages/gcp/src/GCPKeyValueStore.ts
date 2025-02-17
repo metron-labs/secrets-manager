@@ -9,7 +9,7 @@ import {
 
 import { GCPKeyConfig } from "./GcpKeyConfig";
 import { GCPKeyValueStorageError } from "./error";
-import {  GCPKSMClient } from "./GcpKmsClient";
+import { GCPKSMClient } from "./GcpKmsClient";
 import { KeyPurpose } from "./enum";
 import {
   DEFAULT_JSON_INDENT,
@@ -95,7 +95,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
       this.defaultConfigFileLocation;
     this.setLogger(logger);
 
-    this.gcpSessionConfig  = gcpSessionConfig;
+    this.gcpSessionConfig = gcpSessionConfig;
     this.gcpKeyConfig = gcpKeyConfig;
     this.cryptoClient = this.gcpSessionConfig.getCryptoClient();
 
@@ -127,7 +127,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
 
       if (keyPurposeDetails === KeyPurpose.ASYMMETRIC_DECRYPT) {
         this.isAsymmetric = true;
-      }else{
+      } else {
         this.isAsymmetric = false;
       }
 
@@ -159,6 +159,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
 
       if (contents.length === 0) {
         this.logger.warn(`Empty config file ${this.configFileLocation}`);
+        contents = Buffer.from("{}");
       }
 
       // Check if the content is plain JSON
@@ -193,7 +194,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
           ciphertext: contents,
           cryptoClient: this.cryptoClient,
           keyType: this.keyType,
-          keyProperties : this.gcpKeyConfig
+          keyProperties: this.gcpKeyConfig
         });
         try {
           config = JSON.parse(configJson);
@@ -286,7 +287,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
         message: stringifiedValue,
         cryptoClient: this.cryptoClient,
         keyType: this.keyType,
-        keyProperties : this.gcpKeyConfig
+        keyProperties: this.gcpKeyConfig
       });
       await fs.writeFile(this.configFileLocation, blob);
 
@@ -323,7 +324,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
         isAsymmetric: this.isAsymmetric,
         cryptoClient: this.cryptoClient,
         keyType: this.keyType,
-        keyProperties : this.gcpKeyConfig,
+        keyProperties: this.gcpKeyConfig,
         ciphertext,
       });
       if (plaintext.length === 0) {
@@ -391,7 +392,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
           message: "{}",
           keyType: this.keyType,
           cryptoClient: this.cryptoClient,
-          keyProperties : this.gcpKeyConfig
+          keyProperties: this.gcpKeyConfig
         });
         await fs.writeFile(this.configFileLocation, blob);
         console.log("Config file created at:", this.configFileLocation);

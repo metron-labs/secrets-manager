@@ -51,7 +51,7 @@ The storage will require a GCP Key ID, as well as the name of the Secrets Manage
         console.log("extracted key details")
         const gcpSessionConfig = new GCPKSMClient().createClientFromCredentialsFile('/home/username1/Desktop/keeper_test/js/creds.json')
         console.log("extracted gcp session config")
-        let config_path = "/home/metron/Desktop/keeper_test/js/client-config-gcp.json"
+        let config_path = "<path to client-config-gcp.json>"
          // oneTimeToken is used only once to initialize the storage
         // after the first run, subsequent calls will use ksm-config.txt
         const oneTimeToken = "US:kYKVGFJ2605-9UBF4VXd14AztMPXcxZ56zC9gr7O-Cw";
@@ -59,10 +59,6 @@ The storage will require a GCP Key ID, as well as the name of the Secrets Manage
         const storage = await new GCPKeyValueStorage(config_path,keyConfig2,gcpSessionConfig).init();
         // await storage.changeKey(keyConfig2);
         await initializeStorage(storage, oneTimeToken);
-        
-        // Using token only to generate a config (for later usage)
-        // requires at least one access operation to bind the token
-        //await getSecrets({storage: storage})
         
         const {records} = await getSecrets({storage: storage});
         console.log(records)

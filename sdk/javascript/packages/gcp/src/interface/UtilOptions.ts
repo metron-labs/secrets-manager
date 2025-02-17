@@ -3,32 +3,28 @@ import { GCPKeyConfig } from 'src/GcpKeyConfig';
 
 export type KMSClient = InstanceType <typeof KeyManagementServiceClient> ;
 
-export type EncryptBufferOptions = {
+export interface Options{
   isAsymmetric: boolean;
+  cryptoClient: KMSClient;
+  keyProperties : GCPKeyConfig;
+};
+
+export interface BufferOptions extends Options{
+  keyType: string;
+};
+
+export interface EncryptBufferOptions extends BufferOptions{
   message: string;
-  cryptoClient: KMSClient;
-  keyType: string;
-  keyProperties : GCPKeyConfig
 };
 
-export type DecryptBufferOptions = {
-  isAsymmetric: boolean;
+export interface DecryptBufferOptions extends BufferOptions{
   ciphertext: Buffer;
-  cryptoClient: KMSClient;
-  keyType: string;
-  keyProperties : GCPKeyConfig
 };
 
-export type encryptOptions = {
+export interface encryptOptions extends Options {
   message: Buffer;
-  cryptoClient: KMSClient;
-  keyProperties : GCPKeyConfig;
-  isAsymmetric: boolean;
 };
 
-export type decryptOptions = {
+export interface decryptOptions extends Options {
   cipherText: Buffer;
-  cryptoClient: KMSClient;
-  keyProperties : GCPKeyConfig;
-  isAsymmetric: boolean;
 };

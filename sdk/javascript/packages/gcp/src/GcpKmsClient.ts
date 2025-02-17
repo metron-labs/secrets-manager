@@ -1,8 +1,8 @@
 import { KeyManagementServiceClient } from "@google-cloud/kms";
 
-export class GCPKSMClient{
+export class GCPKSMClient {
 
-  private KMSClient ;
+  private KMSClient;
 
 
   /**
@@ -21,7 +21,7 @@ export class GCPKSMClient{
    * If you want to use a different set of credentials, you can pass them in the
    * constructor.
    */
-  constructor(){
+  constructor() {
     this.KMSClient = new KeyManagementServiceClient();
   }
 
@@ -72,7 +72,7 @@ export class GCPKSMClient{
     });
 
     this.KMSClient = kmsClient;
-    return this
+    return this;
   }
 
   /**
@@ -80,7 +80,7 @@ export class GCPKSMClient{
    *
    * @returns The KMS client.
    */
-  public getCryptoClient(){
+  public getCryptoClient() {
     return this.KMSClient;
   }
 }
