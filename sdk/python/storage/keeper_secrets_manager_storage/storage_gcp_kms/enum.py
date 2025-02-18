@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 class KeyPurpose(Enum): 
   ENCRYPT_DECRYPT = "ENCRYPT_DECRYPT",
   ASYMMETRIC_DECRYPT = "ASYMMETRIC_DECRYPT",

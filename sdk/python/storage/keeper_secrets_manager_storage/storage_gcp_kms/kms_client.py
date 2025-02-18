@@ -1,7 +1,16 @@
-from google.cloud import kms
-from google.oauth2 import service_account
+import logging
 
-class GCPKMSClient:
+try:
+    from google.cloud import kms
+    from google.oauth2 import service_account
+except ImportError:
+    logging.getLogger().error("Missing GCP import dependencies."
+                 " To install missing packages run: \r\n"
+                 "pip install --upgrade \"google-cloud-kms\"\r\n"
+                 "pip install --upgrade \"google-auth\"\r\n")
+    raise Exception("Missing import dependencies: google cloud kms and google oauth2")
+
+class GCPKMSClientConfig:
     """
     A client for interacting with Google Cloud KMS.
     """
@@ -12,7 +21,7 @@ class GCPKMSClient:
         By default, the GCP KMS client will use the Application Default Credentials (ADC)
         to authenticate.
         """
-        self.kms_client = kms.KeyManagementServiceClient()
+        self.kms_client = None
 
     def create_client_from_credentials_file(self, credentials_key_file_path: str):
         """
@@ -42,6 +51,13 @@ class GCPKMSClient:
         self.kms_client = kms.KeyManagementServiceClient(credentials=credentials)
         return self
 
+    def get_default_crypto_client(self):
+        """
+        Returns the KMS client instance.
+        """
+        self.kms_client =  kms.KeyManagementServiceClient()
+        return self
+    
     def get_crypto_client(self):
         """
         Returns the KMS client instance.

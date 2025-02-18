@@ -1,16 +1,17 @@
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
+from google.cloud.kms_v1 import CryptoKey
 
 class KeyPurpose:
-    RAW_ENCRYPT_DECRYPT = "RAW_ENCRYPT_DECRYPT"
-    ENCRYPT_DECRYPT = "ENCRYPT_DECRYPT"
-    ASYMMETRIC_DECRYPT = "ASYMMETRIC_DECRYPT"
-
+    RAW_ENCRYPT_DECRYPT = CryptoKey.CryptoKeyPurpose.RAW_ENCRYPT_DECRYPT
+    ENCRYPT_DECRYPT = CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT
+    ASYMMETRIC_DECRYPT = CryptoKey.CryptoKeyPurpose.ASYMMETRIC_DECRYPT
+    
 # Supported key purposes
 SUPPORTED_KEY_PURPOSE = [
-    KeyPurpose.RAW_ENCRYPT_DECRYPT,
-    KeyPurpose.ENCRYPT_DECRYPT,
-    KeyPurpose.ASYMMETRIC_DECRYPT,
+    CryptoKey.CryptoKeyPurpose.RAW_ENCRYPT_DECRYPT,
+    CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT,
+    CryptoKey.CryptoKeyPurpose.ASYMMETRIC_DECRYPT,
 ]
 
 # Constants
