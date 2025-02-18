@@ -41,10 +41,9 @@ export class GCPKSMClient {
    */
 
   public createClientFromCredentialsFile(credentialsKeyFilePath: string) {
-    const kmsClient = new KeyManagementServiceClient({
+    this.KMSClient = new KeyManagementServiceClient({
       keyFilename: credentialsKeyFilePath,
     });
-    this.KMSClient = kmsClient;
     return this;
   }
 
@@ -64,14 +63,12 @@ export class GCPKSMClient {
    */
 
   public createClientUsingCredentials(clientEmail: string, privateKey: string) {
-    const kmsClient = new KeyManagementServiceClient({
+    this.KMSClient = new KeyManagementServiceClient({
       credentials: {
         client_email: clientEmail,
         private_key: privateKey,
       },
     });
-
-    this.KMSClient = kmsClient;
     return this;
   }
 
