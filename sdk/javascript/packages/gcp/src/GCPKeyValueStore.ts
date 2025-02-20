@@ -115,7 +115,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
         name: this.gcpKeyConfig.toKeyName(),
       };
       const [key] = await this.cryptoClient.getCryptoKey(input);
-      const keyPurposeDetails = key.purpose.toString();
+      const keyPurposeDetails = key.purpose?.toString() || "";
 
       if (!supportedKeyPurpose.includes(keyPurposeDetails)) {
         this.logger.error("Unsupported Key Spec for GCP KMS Storage");
@@ -377,30 +377,26 @@ export class GCPKeyValueStorage implements KeyValueStorage {
 
   private async createConfigFileIfMissing(): Promise<void> {
     try {
-      // Check if the config file already exists
-      if (await !fs.access(this.configFileLocation)) {
-        // Ensure the directory structure exists
-        const dir = dirname(this.configFileLocation);
-        if (await !fs.access(dir)) {
-          fs.mkdir(dir, { recursive: true });
-        }
-
-        // Encrypt an empty configuration and write to the file
-        const blob = await encryptBuffer({
-          isAsymmetric: this.isAsymmetric,
-          message: "{}",
-          keyType: this.keyType,
-          cryptoClient: this.cryptoClient,
-          keyProperties: this.gcpKeyConfig
-        });
-        await fs.writeFile(this.configFileLocation, blob);
-        console.log("Config file created at:", this.configFileLocation);
-      } else {
-        console.log("Config file already exists at:", this.configFileLocation);
+      await fs.access(this.configFileLocation);
+      console.log("Config file already exists at:", this.configFileLocation);
+    } catch {
+      console.log("Config file does not exist at:", this.configFileLocation);
+      const dir = dirname(this.configFileLocation);
+      try {
+        await fs.access(dir);
+      } catch {
+        await fs.mkdir(dir, { recursive: true });
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      console.error("Error creating config file:", err.message);
+      // Encrypt an empty configuration and write to the file
+      const blob = await encryptBuffer({
+        isAsymmetric: this.isAsymmetric,
+        message: "{}",
+        keyType: this.keyType,
+        cryptoClient: this.cryptoClient,
+        keyProperties: this.gcpKeyConfig
+      });
+      await fs.writeFile(this.configFileLocation, blob);
+      console.log("Config file created at:", this.configFileLocation);
     }
   }
 
