@@ -88,7 +88,6 @@ export class OciKeyValueStorage implements KeyValueStorage {
   }
 
   async init() {
-    // await this.getKeyDetails();
     await this.loadConfig();
     this.logger.info(`Loaded config file from ${this.configFileLocation}`);
     return this; // Return the instance to allow chaining
@@ -301,9 +300,10 @@ export class OciKeyValueStorage implements KeyValueStorage {
     return plaintext;
   }
 
-  public async changeKey(newKeyId: string): Promise<boolean> {
+  public async changeKey(newKeyId: string, newKeyVersion: string|null): Promise<boolean> {
     const oldKeyId = this.keyId;
     const oldCryptoClient = this.cryptoClient;
+    const oldKeyVersion = this.keyVersion;
 
     try {
       // Update the key and reinitialize the CryptographyClient
@@ -312,13 +312,14 @@ export class OciKeyValueStorage implements KeyValueStorage {
         await this.init();
       }
       this.keyId = newKeyId;
-      // await this.getKeyDetails();
+      this.keyVersion = newKeyVersion ?? "";
       await this.saveConfig({}, true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       // Restore the previous key and crypto client if the operation fails
       this.keyId = oldKeyId;
       this.cryptoClient = oldCryptoClient;
+      this.keyVersion = oldKeyVersion;
       this.logger.error(
         `Failed to change the key to '${newKeyId}' for config '${this.configFileLocation}': ${error.message}`
       );

@@ -7,3 +7,4 @@ export const DEFAULT_ORACLE_CREDENTIAL_ENVIRONMENTAL_VARIABLE = "~/.oci/config";
 export const MD5_HASH = "md5";
 export const HEX_DIGEST = "hex";
 export const DEFAULT_JSON_INDENT = 4;
+export const BASE_64 = "base64";

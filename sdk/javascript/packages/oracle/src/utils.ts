@@ -3,6 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { DecryptRequest, EncryptRequest } from "oci-keymanagement/lib/request";
 import {
   AES_256_GCM,
+  BASE_64,
   BLOB_HEADER,
   LATIN1_ENCODING,
   UTF_8_ENCODING,
@@ -32,7 +33,7 @@ export async function encryptBuffer(
     const encryptRequest : EncryptRequest= {
       encryptDataDetails: {
         keyId:options.keyId,
-        plaintext: key.toString("base64"),
+        plaintext: key.toString(BASE_64),
       },
     };
     if (options.keyVersionId) {
@@ -55,7 +56,7 @@ export async function encryptBuffer(
       }
     }
     
-    const CiphertextBlob = Buffer.from(Buffer.from(response.encryptedData.ciphertext, "base64").toString("latin1"), "latin1"); // making a latin1 buffer from byte64 buffer
+    const CiphertextBlob = Buffer.from(Buffer.from(response.encryptedData.ciphertext, BASE_64).toString(LATIN1_ENCODING), LATIN1_ENCODING); // making a latin1 buffer from byte64 buffer
 
     // Build the blob
     const parts = [CiphertextBlob, nonce, tag, ciphertext];
@@ -118,7 +119,7 @@ export async function decryptBuffer(
     const decryptOptions : DecryptRequest = {
       decryptDataDetails: {
         keyId: options.keyId,
-        ciphertext: Buffer.from(encryptedKey).toString("base64"),
+        ciphertext: Buffer.from(encryptedKey).toString(BASE_64),
       }
     }
     if (options.keyVersionId) {
@@ -148,7 +149,7 @@ export async function decryptBuffer(
       throw new Error("Invalid ciphertext structure: checksum mismatch.");
     }
 
-    const key = Buffer.from(decryptedKey, "base64");
+    const key = Buffer.from(decryptedKey, BASE_64);
     // Decrypt the message using AES-GCM
     const decipher = createDecipheriv(AES_256_GCM, key, nonce);
     decipher.setAuthTag(tag);
@@ -169,7 +170,7 @@ export async function decryptBuffer(
 
 
 async function verifyDecryption(decryptedData, ociChecksum) {
-  const decryptedDataBuffer = Buffer.from(decryptedData, "base64");
+  const decryptedDataBuffer = Buffer.from(decryptedData, BASE_64);
   const checksum = calculate(decryptedDataBuffer);
   return checksum === ociChecksum;
 }
