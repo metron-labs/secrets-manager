@@ -11,7 +11,6 @@ import {
 import { DecryptResponse, EncryptResponse } from "oci-keymanagement/lib/response";
 import { calculate } from "fast-crc32c";
 import { EncryptDataDetails } from "oci-keymanagement/lib/model";
-import { log } from "console";
 
 export async function encryptBuffer(
   options: EncryptBufferOptions
