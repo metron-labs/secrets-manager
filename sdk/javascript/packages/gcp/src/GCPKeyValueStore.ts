@@ -115,7 +115,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
         name: this.gcpKeyConfig.toKeyName(),
       };
       const [key] = await this.cryptoClient.getCryptoKey(input);
-      const keyPurposeDetails = key.purpose?.toString() || "";
+      const keyPurposeDetails = key?.purpose?.toString() || "";
 
       if (!supportedKeyPurpose.includes(keyPurposeDetails)) {
         this.logger.error("Unsupported Key Spec for GCP KMS Storage");

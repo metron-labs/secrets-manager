@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": false,
+    "strict": false,
+    "target": "ES6",
+    "rootDir": "src",
+    "outDir": "dist",
+    "sourceMap": true,
+    "baseUrl": "./",
+    "paths": {
+      "keeper-secrets-manager-oracle": ["node_modules/keeper-secrets-manager-oracle/dist/*"]
+    }
+  },
+//  "include": [
+//    "src/**/*",
+//    "test/**/*"
+//  ],
+  "exclude": ["node_modules"]
+}

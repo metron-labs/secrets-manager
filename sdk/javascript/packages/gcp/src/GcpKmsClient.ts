@@ -1,4 +1,5 @@
 import { KeyManagementServiceClient } from "@google-cloud/kms";
+import { GCPKeyValueStorageError } from "./error";
 
 export class GCPKSMClient {
 
@@ -78,6 +79,9 @@ export class GCPKSMClient {
    * @returns The KMS client.
    */
   public getCryptoClient() {
+    if (!this.KMSClient) {
+      throw new GCPKeyValueStorageError("KMS client not initialized. Please call createClientFromCredentialsFile or createClientUsingCredentials first.");
+    }
     return this.KMSClient;
   }
 }
