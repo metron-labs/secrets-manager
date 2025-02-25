@@ -22,16 +22,16 @@ import { defaultLogger, Logger } from "./Logger";
 import { KMSClient } from "./interface/UtilOptions";
 
 export class GCPKeyValueStorage implements KeyValueStorage {
-  defaultConfigFileLocation: string = "client-config.json";
-  cryptoClient!: KMSClient;
-  config: Record<string, string> = {};
-  lastSavedConfigHash!: string;
-  logger: Logger;
-  gcpKeyConfig!: GCPKeyConfig;
-  keyType: string;
-  configFileLocation!: string;
-  gcpSessionConfig: GCPKSMClient;
-  isAsymmetric: boolean = false;
+  private defaultConfigFileLocation: string = "client-config.json";
+  private cryptoClient!: KMSClient;
+  private config: Record<string, string> = {};
+  private lastSavedConfigHash!: string;
+  private logger: Logger;
+  private gcpKeyConfig!: GCPKeyConfig;
+  private keyType: string;
+  private configFileLocation!: string;
+  private gcpSessionConfig: GCPKSMClient;
+  private isAsymmetric: boolean = false;
 
   setLogger(logger: Logger | null) {
     if (logger) {

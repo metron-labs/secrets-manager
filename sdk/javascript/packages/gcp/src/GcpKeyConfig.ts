@@ -1,3 +1,5 @@
+import { GCPKeyValueStorageError } from "./error";
+
 /**
  * Configuration for a Google Cloud Key Management Service (KMS) key.
  *
@@ -25,7 +27,7 @@ export class GCPKeyConfig {
      * The version of the key.
      * @type {string|null}
      */
-    public keyVersion: string|null;
+    public keyVersion: string | null;
     /**
      * The name of the key ring.
      * @type {string}
@@ -51,36 +53,40 @@ export class GCPKeyConfig {
      * @param {string} [location] The location (region or multi-region)
      * @param {string} [keyVersion] The version of the key. If not provided, the latest version will be used.
      */
-    constructor(resourcename?:string , keyName?: string,  keyRing?: string, project?: string, location?: string, keyVersion?: string|null,) {
-        if(!resourcename){
-            this.keyName = keyName;
-            this.keyVersion = keyVersion;
-            this.keyRing = keyRing;
-            this.project = project;
-            this.location = location;
-        }else{
+    constructor(resourcename?: string, keyName?: string, keyRing?: string, project?: string, location?: string, keyVersion?: string | null,) {
+        if (!resourcename) {
+            this.keyName = keyName ?? '';
+            this.keyVersion = keyVersion ?? '';
+            this.keyRing = keyRing ?? '';
+            this.project = project ?? '';
+            this.location = location ?? '';
+        } else {
             const parts = resourcename.split('/');
 
             if (parts.length < 10) {
-                throw new Error("Invalid KMS resource path");
+                throw new GCPKeyValueStorageError("Invalid KMS resource path");
             }
-            this.project = parts[1]
+            this.project = parts[1];
             this.location = parts[3];
             this.keyRing = parts[5];
             this.keyName = parts[7];
-            this.keyVersion = parts.length > 9 ? parts[9] : undefined
+            this.keyVersion = parts.length > 9 ? parts[9] : "";
+        }
+
+        if (!this.keyName || !this.keyRing || !this.project || !this.location) {
+            throw new GCPKeyValueStorageError("Invalid KMS resource path");
         }
     }
 
-    public toString(this){
+    public toString(this) {
         return `${this.keyName}, ${this.keyVersion}`;
     }
 
-    public toKeyName(this){
+    public toKeyName(this) {
         return `projects/${this.project}/locations/${this.location}/keyRings/${this.keyRing}/cryptoKeys/${this.keyName}`;
     }
 
-    public toResourceName(this){
+    public toResourceName(this) {
         return `projects/${this.project}/locations/${this.location}/keyRings/${this.keyRing}/cryptoKeys/${this.keyName}/cryptoKeyVersions/${this.keyVersion}`;
     }
 
