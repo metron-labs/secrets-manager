@@ -11,6 +11,7 @@ import {
 import { DecryptResponse, EncryptResponse } from "oci-keymanagement/lib/response";
 import { calculate } from "fast-crc32c";
 import { EncryptDataDetails } from "oci-keymanagement/lib/model";
+import { log } from "console";
 
 export async function encryptBuffer(
   options: EncryptBufferOptions
@@ -47,6 +48,7 @@ export async function encryptBuffer(
       );
     }catch(err){
       if (err?.serviceCode==="InvalidParameter"){
+        console.info("since the provided key is not a symmetric key, retrying with RSA key configuration");
         encryptRequest.encryptDataDetails.encryptionAlgorithm = EncryptDataDetails.EncryptionAlgorithm.RsaOaepSha256;
         response = await options.cryptoClient.encrypt(
           encryptRequest
@@ -133,6 +135,7 @@ export async function decryptBuffer(
       );
     }catch(err){
       if (err?.serviceCode==="InvalidParameter"){
+        console.info("since the provided key is not a symmetric key, retrying with RSA key configuration");
         decryptOptions.decryptDataDetails.encryptionAlgorithm = EncryptDataDetails.EncryptionAlgorithm.RsaOaepSha256;
         response = await options.cryptoClient.decrypt(
           decryptOptions
