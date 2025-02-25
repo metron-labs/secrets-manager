@@ -20,10 +20,10 @@ public class AwsSessionConfig {
     private String awsSecretAccessKey;
     private Region regionName;
 	
-    public AwsSessionConfig(String awsAccessKeyId, String awsSecretAccessKey) {
+    public AwsSessionConfig(String awsAccessKeyId, String awsSecretAccessKey, Region regionName) {
         this.awsAccessKeyId = awsAccessKeyId;
         this.awsSecretAccessKey = awsSecretAccessKey;
-        this.regionName = regionName == null ? Region.AP_SOUTH_1 : regionName;
+        this.regionName = regionName;
         
     }
 

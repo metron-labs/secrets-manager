@@ -15,7 +15,6 @@ package com.keepersecurity.secretmanager.aws.kms;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
 import software.amazon.awssdk.services.kms.model.DecryptResponse;
@@ -32,25 +31,21 @@ public class AWSKMSClient {
 		AwsBasicCredentials awsCreds = AwsBasicCredentials.create(sessionConfig.getAwsAccessKeyId(),
 				sessionConfig.getAwsSecretAccessKey());
 		kmsClient = KmsClient.builder().credentialsProvider(StaticCredentialsProvider.create(awsCreds))
-				.region(Region.AP_SOUTH_1).build();
+				.region(sessionConfig.getRegionName()).build();
 	}
 	
 	public byte[] encrypt(SdkBytes message, String keyId) throws Exception {
 		if (Constants.SYMMETRIC_DEFAULT.equals(getKeySpecType(keyId))) {
-			System.out.println("ENCRYPTING USING SYMMETRIC DEFAULT");
 			return encryptSymmetric(message, keyId);
 		}else {
-			System.out.println("ENCRYPTING USING ASYMMETRIC DEFAULT");
 			return encryptAsymmetric(message, keyId);
 		}
 	}
 
 	public SdkBytes decrypt(byte[] ciphertext, String keyId) throws Exception {
 		if (Constants.SYMMETRIC_DEFAULT.equals(getKeySpecType(keyId))) {
-			System.out.println("DECRYPTING USING SYMMETRIC DEFAULT");
 			return decryptSymmetric(ciphertext, keyId);
 		}else {
-			System.out.println("DECRYPTING USING ASYMMETRIC DEFAULT");
 			return decryptAsymmetric(ciphertext, keyId);
 		}
 	}
