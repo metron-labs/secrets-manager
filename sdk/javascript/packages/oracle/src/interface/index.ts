@@ -1,1 +1,1 @@
-export {EncryptBufferOptions,DecryptBufferOptions} from './UtilOptions';
+export { EncryptBufferOptions, DecryptBufferOptions } from './UtilOptions';

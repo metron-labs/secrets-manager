@@ -30,9 +30,9 @@ export async function encryptBuffer(
     ]);
     const tag = cipher.getAuthTag();
 
-    const encryptRequest : EncryptRequest= {
+    const encryptRequest: EncryptRequest = {
       encryptDataDetails: {
-        keyId:options.keyId,
+        keyId: options.keyId,
         plaintext: key.toString(BASE_64),
       },
     };
@@ -40,23 +40,23 @@ export async function encryptBuffer(
       encryptRequest.encryptDataDetails.keyVersionId = options.keyVersionId;
     }
 
-    let response : EncryptResponse;
-    try{
+    let response: EncryptResponse;
+    try {
       response = await options.cryptoClient.encrypt(
         encryptRequest
       );
-    }catch(err){
-      if (err?.serviceCode==="InvalidParameter"){
+    } catch (err) {
+      if (err?.serviceCode === "InvalidParameter") {
         console.info("since the provided key is not a symmetric key, retrying with RSA key configuration");
         encryptRequest.encryptDataDetails.encryptionAlgorithm = EncryptDataDetails.EncryptionAlgorithm.RsaOaepSha256;
         response = await options.cryptoClient.encrypt(
           encryptRequest
         );
-      }else{
+      } else {
         throw err;
       }
     }
-    
+
     const CiphertextBlob = Buffer.from(Buffer.from(response.encryptedData.ciphertext, BASE_64).toString(LATIN1_ENCODING), LATIN1_ENCODING); // making a latin1 buffer from byte64 buffer
 
     // Build the blob
@@ -97,14 +97,14 @@ export async function decryptBuffer(
     for (let i = 0; i < 4; i++) {
       const sizeBuffer = options.ciphertext.subarray(pos, pos + 2); // Read the size (2 bytes)
       if (sizeBuffer.length !== 2) {
-      throw new Error("Invalid ciphertext structure: size buffer length mismatch.");
+        throw new Error("Invalid ciphertext structure: size buffer length mismatch.");
       }
       pos += 2;
 
       const partLength = sizeBuffer.readUInt16BE(0); // Parse length as big-endian
       const part = options.ciphertext.subarray(pos, pos + partLength);
       if (part.length !== partLength) {
-      throw new Error("Invalid ciphertext structure: part length mismatch.");
+        throw new Error("Invalid ciphertext structure: part length mismatch.");
       }
       pos += partLength;
 
@@ -117,36 +117,36 @@ export async function decryptBuffer(
 
     const [encryptedKey, nonce, tag, encryptedText] = parts;
 
-    const decryptOptions : DecryptRequest = {
+    const decryptOptions: DecryptRequest = {
       decryptDataDetails: {
         keyId: options.keyId,
         ciphertext: Buffer.from(encryptedKey).toString(BASE_64),
       }
-    }
+    };
     if (options.keyVersionId) {
       decryptOptions.decryptDataDetails.keyVersionId = options.keyVersionId;
     }
 
-    let response : DecryptResponse;
-    try{
+    let response: DecryptResponse;
+    try {
       response = await options.cryptoClient.decrypt(
         decryptOptions
       );
-    }catch(err){
-      if (err?.serviceCode==="InvalidParameter"){
+    } catch (err) {
+      if (err?.serviceCode === "InvalidParameter") {
         console.info("since the provided key is not a symmetric key, retrying with RSA key configuration");
         decryptOptions.decryptDataDetails.encryptionAlgorithm = EncryptDataDetails.EncryptionAlgorithm.RsaOaepSha256;
         response = await options.cryptoClient.decrypt(
           decryptOptions
         );
-      }else{
+      } else {
         throw err;
       }
     }
 
     const decryptedKey = response.decryptedData.plaintext;
 
-    const verificationStatus = await verifyDecryption(decryptedKey, response.decryptedData.plaintextChecksum)
+    const verificationStatus = await verifyDecryption(decryptedKey, response.decryptedData.plaintextChecksum);
     if (verificationStatus) {
       throw new Error("Invalid ciphertext structure: checksum mismatch.");
     }

@@ -15,7 +15,7 @@ export class OCISessionConfig {
     this.ksmEndpoint = kmsEndpoint;
   }
 
-  public getProvider(): ConfigFileAuthenticationDetailsProvider { 
+  public getProvider(): ConfigFileAuthenticationDetailsProvider {
     return new ConfigFileAuthenticationDetailsProvider(this.ociConfigFileLocation, this.profile);
   }
 
