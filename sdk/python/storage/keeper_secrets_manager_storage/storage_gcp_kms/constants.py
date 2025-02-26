@@ -1,12 +1,21 @@
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
-from google.cloud.kms_v1 import CryptoKey
+from google.cloud.kms_v1 import CryptoKey,CryptoKeyVersion
 
 class KeyPurpose:
     RAW_ENCRYPT_DECRYPT = CryptoKey.CryptoKeyPurpose.RAW_ENCRYPT_DECRYPT
     ENCRYPT_DECRYPT = CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT
     ASYMMETRIC_DECRYPT = CryptoKey.CryptoKeyPurpose.ASYMMETRIC_DECRYPT
-    
+
+class KeyAlgorithm:
+    RSA_DECRYPT_OAEP_2048_SHA256 = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_DECRYPT_OAEP_2048_SHA256
+    RSA_DECRYPT_OAEP_3072_SHA256 = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_DECRYPT_OAEP_3072_SHA256
+    RSA_DECRYPT_OAEP_4096_SHA256 = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_DECRYPT_OAEP_4096_SHA256
+    RSA_DECRYPT_OAEP_4096_SHA512 = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_DECRYPT_OAEP_4096_SHA512
+    RSA_DECRYPT_OAEP_2048_SHA1 = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_DECRYPT_OAEP_2048_SHA1
+    RSA_DECRYPT_OAEP_3072_SHA1 = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_DECRYPT_OAEP_3072_SHA1
+    RSA_DECRYPT_OAEP_4096_SHA1 = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_DECRYPT_OAEP_4096_SHA1
+
 # Supported key purposes
 SUPPORTED_KEY_PURPOSE = [
     CryptoKey.CryptoKeyPurpose.RAW_ENCRYPT_DECRYPT,
@@ -27,4 +36,3 @@ OAEP_PADDING = padding.OAEP(
     algorithm=hashes.SHA256(),
     label=None
 )
-SHA_256 = hashes.SHA256()

@@ -3,8 +3,9 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Hash import SHA256
-from .constants import BLOB_HEADER, KeyPurpose
+from Crypto.Hash import SHA256, SHA1, SHA512
+from cryptography.hazmat.primitives import hashes
+from .constants import BLOB_HEADER, KeyAlgorithm, KeyPurpose
 
 
 try:
@@ -17,7 +18,7 @@ except ImportError:
     raise Exception("Missing import dependencies: google-crc32c")
 
 
-def encrypt_buffer(is_asymmetric, message, crypto_client, key_properties):
+def encrypt_buffer(is_asymmetric, message, crypto_client, key_properties,encryption_algorithm):
     try:
         # Generate a random 32-byte key
         key = get_random_bytes(32)
@@ -34,6 +35,7 @@ def encrypt_buffer(is_asymmetric, message, crypto_client, key_properties):
             'crypto_client': crypto_client,
             'key_properties': key_properties,
             'is_asymmetric': is_asymmetric,
+            'encryption_algorithm': encryption_algorithm
         }
 
         if is_asymmetric:
@@ -74,7 +76,7 @@ def encrypt_data_and_validate_crc_asymmetric(options):
         raise ValueError('GetPublicKey: response corrupted in-transit')
 
     rsa_key = RSA.import_key(public_key.pem.encode())
-    cipher = PKCS1_OAEP.new(rsa_key, hashAlgo=SHA256)
+    cipher = PKCS1_OAEP.new(rsa_key, hashAlgo= get_hash_algorithm(options.get('encryption_algorithm')))
     ciphertext = cipher.encrypt(encoded_data)
 
     return ciphertext
@@ -184,3 +186,23 @@ def get_key_type(key_purpose: CryptoKey.CryptoKeyPurpose):
         return "ENCRYPT_DECRYPT"
     elif key_purpose == KeyPurpose.ASYMMETRIC_DECRYPT:
         return "ASYMMETRIC_DECRYPT"
+
+def get_hash_algorithm(encryption_algorithm: KeyAlgorithm) -> hashes.HashAlgorithm:
+    """Converts a KeyAlgorithm to a HashAlgorithm."""
+
+    hash_algorithms = {
+        KeyAlgorithm.RSA_DECRYPT_OAEP_2048_SHA256: SHA256,
+        KeyAlgorithm.RSA_DECRYPT_OAEP_3072_SHA256: SHA256,
+        KeyAlgorithm.RSA_DECRYPT_OAEP_4096_SHA256: SHA256,
+        KeyAlgorithm.RSA_DECRYPT_OAEP_4096_SHA512: SHA512,
+        KeyAlgorithm.RSA_DECRYPT_OAEP_2048_SHA1: SHA1,
+        KeyAlgorithm.RSA_DECRYPT_OAEP_3072_SHA1: SHA1,
+        KeyAlgorithm.RSA_DECRYPT_OAEP_4096_SHA1: SHA1,
+    }
+
+    try:
+        return hash_algorithms[encryption_algorithm]
+    except KeyError:
+        raise TypeError(
+            "Unsupported encryption algorithm is used for provided key"
+        ) from None

@@ -56,7 +56,7 @@ class GCPKeyValueStorage(KeyValueStorage):
             }
             key = self.crypto_client.get_crypto_key(input)
             key_purpose_details = key.purpose
-
+            self.encryption_algorithm = key.version_template.algorithm
             if key_purpose_details not in SUPPORTED_KEY_PURPOSE:
                 self.logger.error("Unsupported Key Spec for GCP KMS Storage")
                 raise Exception("Unsupported Key Spec for GCP KMS Storage")
@@ -85,7 +85,8 @@ class GCPKeyValueStorage(KeyValueStorage):
                     is_asymmetric=self.is_asymmetric,
                     message=empty_config,
                     crypto_client=self.crypto_client,
-                    key_properties=self.gcp_key_config
+                    key_properties=self.gcp_key_config,
+                    encryption_algorithm=self.encryption_algorithm
                 )
                 with open(self.config_file_location, 'wb') as config_file:
                     config_file.write(blob)
@@ -161,7 +162,8 @@ class GCPKeyValueStorage(KeyValueStorage):
                 is_asymmetric=self.is_asymmetric,
                 message=stringified_value,
                 crypto_client=self.crypto_client,
-                key_properties=self.gcp_key_config
+                key_properties=self.gcp_key_config,
+                encryption_algorithm=self.encryption_algorithm
             )
             with open(self.config_file_location, 'wb') as config_file:
                 config_file.write(blob)
