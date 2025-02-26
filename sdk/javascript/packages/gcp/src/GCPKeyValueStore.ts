@@ -32,6 +32,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
   private configFileLocation!: string;
   private gcpSessionConfig: GCPKSMClient;
   private isAsymmetric: boolean = false;
+  private encryptionAlgorithm: string;
 
   setLogger(logger: Logger | null) {
     if (logger) {
@@ -115,6 +116,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
         name: this.gcpKeyConfig.toKeyName(),
       };
       const [key] = await this.cryptoClient.getCryptoKey(input);
+      this.encryptionAlgorithm = key?.versionTemplate?.algorithm?.toString() || "";
       const keyPurposeDetails = key?.purpose?.toString() || "";
 
       if (!supportedKeyPurpose.includes(keyPurposeDetails)) {
@@ -193,6 +195,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
           ciphertext: contents,
           cryptoClient: this.cryptoClient,
           keyType: this.keyType,
+          encryptionAlgorithm: this.encryptionAlgorithm,
           keyProperties: this.gcpKeyConfig
         });
         try {
@@ -286,6 +289,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
         message: stringifiedValue,
         cryptoClient: this.cryptoClient,
         keyType: this.keyType,
+        encryptionAlgorithm: this.encryptionAlgorithm,
         keyProperties: this.gcpKeyConfig
       });
       await fs.writeFile(this.configFileLocation, blob);
@@ -323,6 +327,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
         isAsymmetric: this.isAsymmetric,
         cryptoClient: this.cryptoClient,
         keyType: this.keyType,
+        encryptionAlgorithm: this.encryptionAlgorithm,
         keyProperties: this.gcpKeyConfig,
         ciphertext,
       });
@@ -393,6 +398,7 @@ export class GCPKeyValueStorage implements KeyValueStorage {
         message: "{}",
         keyType: this.keyType,
         cryptoClient: this.cryptoClient,
+        encryptionAlgorithm: this.encryptionAlgorithm,
         keyProperties: this.gcpKeyConfig
       });
       await fs.writeFile(this.configFileLocation, blob);

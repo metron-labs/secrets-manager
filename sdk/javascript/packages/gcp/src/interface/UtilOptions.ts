@@ -7,6 +7,7 @@ export interface Options{
   isAsymmetric: boolean;
   cryptoClient: KMSClient;
   keyProperties : GCPKeyConfig;
+  encryptionAlgorithm : string;
 };
 
 export interface BufferOptions extends Options{

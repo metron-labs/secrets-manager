@@ -12,10 +12,13 @@ import {
     BLOB_HEADER,
     LATIN1_ENCODING,
     SHA_256,
+    SHA_1,
     UTF_8_ENCODING,
+    SHA_512,
 } from "./constants";
 import { publicEncrypt } from "crypto";
 import { RSA_PKCS1_OAEP_PADDING } from "constants";
+import { GCPKeyValueStorageError } from "./error";
 
 
 export async function encryptBuffer(
@@ -41,6 +44,7 @@ export async function encryptBuffer(
             cryptoClient: options.cryptoClient,
             keyProperties: options.keyProperties,
             isAsymmetric: options.isAsymmetric,
+            encryptionAlgorithm: options.encryptionAlgorithm,
         };
 
         const CiphertextBlob: Buffer = options.isAsymmetric ? await encryptDataAndValidateCRCAsymmetric(encryptOptions) : await encryptDataAndValidateCRC(encryptOptions);
@@ -83,13 +87,12 @@ async function encryptDataAndValidateCRCAsymmetric(
     const ciphertextBuffer = publicEncrypt(
         {
             key: publicKey.pem,
-            oaepHash: SHA_256,
+            oaepHash: getHashingAlgorithm(options.encryptionAlgorithm),
             padding: RSA_PKCS1_OAEP_PADDING,
         },
         encodedData
     );
 
-    console.log(`Ciphertext: ${ciphertextBuffer.toString('base64')}`);
     return ciphertextBuffer;
 }
 
@@ -162,6 +165,7 @@ export async function decryptBuffer(
             cryptoClient: options.cryptoClient,
             keyProperties: options.keyProperties,
             isAsymmetric: options.isAsymmetric,
+            encryptionAlgorithm: options.encryptionAlgorithm,
         });
 
         const key = decryptedData;
@@ -218,4 +222,23 @@ async function decryptDataAndValidateCRC(
     const plaintext = decryptResponseData.plaintext;
 
     return typeof plaintext === "string" ? Buffer.from(plaintext.toString(), LATIN1_ENCODING) : Buffer.from(plaintext);
+}
+
+function getHashingAlgorithm(encryptionAlgorithm): string {
+    
+    const supportedEncryptionAlgorithms ={
+        "RSA_DECRYPT_OAEP_2048_SHA256" : SHA_256,
+        "RSA_DECRYPT_OAEP_3072_SHA256" : SHA_256,
+        "RSA_DECRYPT_OAEP_4096_SHA256" : SHA_256,
+        "RSA_DECRYPT_OAEP_4096_SHA512" : SHA_512,
+        "RSA_DECRYPT_OAEP_2048_SHA1" : SHA_1,
+        "RSA_DECRYPT_OAEP_3072_SHA1" : SHA_1,
+        "RSA_DECRYPT_OAEP_4096_SHA1" : SHA_1,
+    }
+
+    const suggestedHash = supportedEncryptionAlgorithms[encryptionAlgorithm];
+    if(!suggestedHash){
+        throw new GCPKeyValueStorageError("Unsupported encryption algorithm is used for provided key");
+    }
+    return suggestedHash;
 }
