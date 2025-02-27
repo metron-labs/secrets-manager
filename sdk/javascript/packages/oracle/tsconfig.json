@@ -12,9 +12,8 @@
         "keeper-secrets-manager-oracle": ["node_modules/keeper-secrets-manager-oracle/dist/*"]
       }
     },
-  //  "include": [
-  //    "src/**/*",
-  //    "test/**/*"
-  //  ],
+   "include": [
+     "src/**/*",
+   ],
     "exclude": ["node_modules"]
   }
