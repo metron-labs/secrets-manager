@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+      "module": "commonjs",
+      "noImplicitAny": false,
+      "strict": false,
+      "target": "ES6",
+      "rootDir": "src",
+      "outDir": "dist",
+      "sourceMap": true,
+      "baseUrl": "./",
+      "paths": {
+        "keeper-secrets-manager-aws": ["node_modules/keeper-secrets-manager-gcp/dist/*"]
+      }
+    },
+  //  "include": [
+  //    "src/**/*",
+  //    "test/**/*"
+  //  ],
+    "exclude": ["node_modules"]
+  }
