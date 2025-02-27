@@ -4,7 +4,7 @@ Keeper Secrets Manager integrates with **Oracle Key Management Service (OCI KMS)
 ## Features
 * Encrypt and decrypt your Keeper Secrets Manager configuration files using **OCI KMS**.
 * Protect against unauthorized access to your **Secrets Manager connections**.
-* Requires only minor code modifications for immediate protection. Works with all Keeper Secrets Manager J**avaScript SDK** functionality.
+* Requires only minor code modifications for immediate protection. Works with all Keeper Secrets Manager **JavaScript SDK** functionality.
 
 ## Prerequisites
 * Supports the JavaScript Secrets Manager SDK.
@@ -43,14 +43,14 @@ The storage will require an `Config file location`, `configuration profile`(if t
 
         const ociSessionConfig = await new OCISessionConfig(configFileLocation, profile, kmsEndpoint);
 
-        let config_path = "/home/metron/Desktop/keeper_test/js/client-config-oracle.json";
+        let config_path = "<configFilePath>";
 
         // oneTimeToken is used only once to initialize the storage
         // after the first run, subsequent calls will use ksm-config.txt
-        const oneTimeToken = "US:kYKVGFJ2605-9UBF4VXd14AztMPXcxZ56zC9gr7O-Cw";
+        const oneTimeToken = "<token>";
 
-        const keyId = 'ocid1.key.oc1.iad.<>.abuwcljrwhzx4ufz7ntyonykf5nk2e5lpfifabzikcipf6aq2ffqxgnpnjfa';
-        const keyVersionId = "ocid1.keyversion.oc1.iad.<>.a4irm6l3bwyaa.abuwcljrfulolwiqbl4z67s42dgv3p44gg2gnqnoiznfrjvjqgna2y3yf6lq";
+        const keyId = 'ocid1.key.oc1.iad.<>.<>';
+        const keyVersionId = "ocid1.keyversion.oc1.iad.<>.<>";
 
         const storage = await new OciKeyValueStorage(keyId, keyVersionId, config_path2, ociSessionConfig).init();
         // await storage.changeKey(keyId);

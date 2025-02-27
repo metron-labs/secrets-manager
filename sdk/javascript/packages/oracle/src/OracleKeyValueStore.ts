@@ -122,8 +122,7 @@ export class OciKeyValueStorage implements KeyValueStorage {
       let jsonError;
       let decryptionError = false;
       try {
-        const configData = contents.toString();
-        config = JSON.parse(configData);
+        config = JSON.parse(contents.toString());
         // Encrypt and save the config if it's plain JSON
         if (config) {
           this.config = config;
@@ -156,7 +155,7 @@ export class OciKeyValueStorage implements KeyValueStorage {
           this.lastSavedConfigHash = createHash(MD5_HASH)
             .update(
               JSON.stringify(
-                config,
+                this.config,
                 Object.keys(this.config).sort(),
                 DEFAULT_JSON_INDENT
               )
