@@ -1,10 +1,19 @@
+#  _  __
+# | |/ /___ ___ _ __  ___ _ _ (R)
+# | ' </ -_) -_) '_ \/ -_) '_|
+# |_|\_\___\___| .__/\___|_|
+#              |_|
+#
+# Keeper Secrets Manager
+# Copyright 2025 Keeper Security Inc.
+# Contact: sm@keepersecurity.com
+
 import base64
 import logging
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from .constants import BLOB_HEADER, UTF_8_ENCODING
 from oci.exceptions import ServiceError
-
 
 
 try:
