@@ -3,23 +3,30 @@ import { ConfigFileAuthenticationDetailsProvider } from "oci-common";
 export class OCISessionConfig {
   ociConfigFileLocation: string;
   profile?: string;
-  ksmEndpoint: string;
+  ksmCryptoEndpoint: string;
+  ksmManagementEndpoint: string;
 
   constructor(
     ociConfigFileLocation: string,
     profile: string | null,
-    kmsEndpoint: string
+    kmsCryptoEndpoint: string,
+    ksmManagementEndpoint : string
   ) {
     this.ociConfigFileLocation = ociConfigFileLocation;
     this.profile = profile || "DEFAULT";
-    this.ksmEndpoint = kmsEndpoint;
+    this.ksmCryptoEndpoint = kmsCryptoEndpoint;
+    this.ksmManagementEndpoint = ksmManagementEndpoint;
   }
 
   public getProvider(): ConfigFileAuthenticationDetailsProvider {
     return new ConfigFileAuthenticationDetailsProvider(this.ociConfigFileLocation, this.profile);
   }
 
-  public getKmsEndpoint(): string {
-    return this.ksmEndpoint;
+  public getKmsCryptoEndpoint(): string {
+    return this.ksmCryptoEndpoint;
+  }
+
+  public getKmsManagementEndpoint(): string {
+    return this.ksmManagementEndpoint;
   }
 }

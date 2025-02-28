@@ -40,23 +40,11 @@ export async function encryptBuffer(
       encryptRequest.encryptDataDetails.keyVersionId = options.keyVersionId;
     }
 
-    let response: EncryptResponse;
-    try {
-      response = await options.cryptoClient.encrypt(
-        encryptRequest
-      );
-    } catch (err) {
-      if (err?.serviceCode === "InvalidParameter") {
-        console.info("since the provided key is not a symmetric key, retrying with RSA key configuration");
-        encryptRequest.encryptDataDetails.encryptionAlgorithm = EncryptDataDetails.EncryptionAlgorithm.RsaOaepSha256;
-        response = await options.cryptoClient.encrypt(
-          encryptRequest
-        );
-      } else {
-        throw err;
-      }
+    if(options.isAsymmetric) {
+      encryptRequest.encryptDataDetails.encryptionAlgorithm = EncryptDataDetails.EncryptionAlgorithm.RsaOaepSha256;
     }
-
+    const response : EncryptResponse= await options.cryptoClient.encrypt(encryptRequest);
+   
     const CiphertextBlob = Buffer.from(Buffer.from(response.encryptedData.ciphertext, BASE_64).toString(LATIN1_ENCODING), LATIN1_ENCODING); // making a latin1 buffer from byte64 buffer
 
     // Build the blob
@@ -127,23 +115,14 @@ export async function decryptBuffer(
       decryptOptions.decryptDataDetails.keyVersionId = options.keyVersionId;
     }
 
-    let response: DecryptResponse;
-    try {
-      response = await options.cryptoClient.decrypt(
-        decryptOptions
-      );
-    } catch (err) {
-      if (err?.serviceCode === "InvalidParameter") {
-        console.info("since the provided key is not a symmetric key, retrying with RSA key configuration");
-        decryptOptions.decryptDataDetails.encryptionAlgorithm = EncryptDataDetails.EncryptionAlgorithm.RsaOaepSha256;
-        response = await options.cryptoClient.decrypt(
-          decryptOptions
-        );
-      } else {
-        throw err;
-      }
-    }
+    if(options.isAsymmetric) {
+      decryptOptions.decryptDataDetails.encryptionAlgorithm = EncryptDataDetails.EncryptionAlgorithm.RsaOaepSha256;
+    };
 
+    const response: DecryptResponse = await options.cryptoClient.decrypt(
+      decryptOptions
+    );
+    
     const decryptedKey = response.decryptedData.plaintext;
 
     const verificationStatus = await verifyDecryption(decryptedKey, response.decryptedData.plaintextChecksum);

@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import { dirname } from "path";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 
 import {
   KeyValueStorage,
@@ -16,17 +16,23 @@ import {
 import { decryptBuffer, encryptBuffer } from "./utils";
 import { defaultLogger, Logger } from "./Logger";
 import { OCISessionConfig } from "./OciSessionConfig";
-import { KmsCryptoClient } from "oci-keymanagement";
+import { KmsCryptoClient, KmsManagementClient } from "oci-keymanagement";
+import { GetKeyResponse } from "oci-keymanagement/lib/response";
+import { GetKeyRequest } from "oci-keymanagement/lib/request";
+import { KeyShape } from "oci-keymanagement/lib/model";
+import { OracleKeyValueStorageError } from "./error";
 
 export class OciKeyValueStorage implements KeyValueStorage {
   defaultConfigFileLocation: string = "client-config.json";
   keyId!: string;
   cryptoClient!: KmsCryptoClient;
+  managementClient!: KmsManagementClient;
   config: Record<string, string> = {};
   lastSavedConfigHash!: string;
   logger: Logger;
   configFileLocation!: string;
   keyVersion: string;
+  isAsymmetric: boolean;
 
   setLogger(logger: Logger | null) {
     if (logger) {
@@ -82,15 +88,37 @@ export class OciKeyValueStorage implements KeyValueStorage {
     this.keyId = keyId;
     this.keyVersion = keyVersion ?? "";
     this.setLogger(logger);
-
-    this.cryptoClient = new OciKmsClient(OciSessionConfig).getCryptoClient();
+    const ociKmsClient = new OciKmsClient(OciSessionConfig);
+    this.cryptoClient = ociKmsClient.getCryptoClient();
+    this.managementClient = ociKmsClient.getManagementClient();
     this.lastSavedConfigHash = "";
   }
 
   async init() {
+    await this.getKeyDetails();
     await this.loadConfig();
     this.logger.info(`Loaded config file from ${this.configFileLocation}`);
     return this; // Return the instance to allow chaining
+  }
+
+  async getKeyDetails(){
+    const opcRequestId = randomUUID();
+    this.logger.info(`Making a getKey request with request Id ${opcRequestId}`);
+    const keyDetailsRequest : GetKeyRequest= {
+      keyId : this.keyId,
+      opcRequestId : opcRequestId
+    };
+
+    const keyDetails : GetKeyResponse= await this.managementClient.getKey(keyDetailsRequest);
+    const algorithm : KeyShape.Algorithm =  keyDetails.key.keyShape.algorithm;
+
+    if (algorithm == KeyShape.Algorithm.Aes){
+      this.isAsymmetric = false;
+    }else if (algorithm == KeyShape.Algorithm.Rsa){
+      this.isAsymmetric = true;
+    }else{
+      throw new OracleKeyValueStorageError(` given key has unsupported algorithm: ${algorithm}`);
+    }
   }
 
   private async loadConfig(): Promise<void> {
@@ -148,6 +176,7 @@ export class OciKeyValueStorage implements KeyValueStorage {
           ciphertext: contents,
           cryptoClient: this.cryptoClient,
           keyVersionId: this.keyVersion,
+          isAsymmetric: this.isAsymmetric
         });
         try {
           config = JSON.parse(configJson);
@@ -240,6 +269,7 @@ export class OciKeyValueStorage implements KeyValueStorage {
         message: stringifiedValue,
         cryptoClient: this.cryptoClient,
         keyVersionId: this.keyVersion,
+        isAsymmetric: this.isAsymmetric
       });
       await fs.writeFile(this.configFileLocation, blob);
 
@@ -276,6 +306,7 @@ export class OciKeyValueStorage implements KeyValueStorage {
         keyId: this.keyId,
         cryptoClient: this.cryptoClient,
         keyVersionId: this.keyVersion,
+        isAsymmetric: this.isAsymmetric,
         ciphertext,
       });
       if (plaintext.length === 0) {
@@ -312,6 +343,7 @@ export class OciKeyValueStorage implements KeyValueStorage {
       }
       this.keyId = newKeyId;
       this.keyVersion = newKeyVersion ?? "";
+      await this.getKeyDetails();
       await this.saveConfig({}, true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -322,6 +354,7 @@ export class OciKeyValueStorage implements KeyValueStorage {
       this.logger.error(
         `Failed to change the key to '${newKeyId}' for config '${this.configFileLocation}': ${error.message}`
       );
+      await this.getKeyDetails();
       throw new Error(
         `Failed to change the key for ${this.configFileLocation}`
       );
@@ -347,6 +380,7 @@ export class OciKeyValueStorage implements KeyValueStorage {
         message: "{}",
         cryptoClient: this.cryptoClient,
         keyVersionId: this.keyVersion,
+        isAsymmetric: this.isAsymmetric
       });
       await fs.writeFile(this.configFileLocation, blob);
       console.log("Config file created at:", this.configFileLocation);

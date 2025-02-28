@@ -39,9 +39,10 @@ The storage will require an `Config file location`, `configuration profile`(if t
 
         const configFileLocation = "/home/...../.oci/config";
         const profile = "DEFAULT";
-        const kmsEndpoint = "https://<>-crypto.kms.<location>.oraclecloud.com";
+        const kmsCryptoEndpoint = "https://<>-crypto.kms.<location>.oraclecloud.com";
+        const kmsManagementEndpoint = "https://<>-management.kms.<location>.oraclecloud.com";
 
-        const ociSessionConfig = await new OCISessionConfig(configFileLocation, profile, kmsEndpoint);
+        const ociSessionConfig = await new OCISessionConfig(configFileLocation, profile, kmsCryptoEndpoint,kmsManagementEndpoint);
 
         let config_path = "<configFilePath>";
 
@@ -69,6 +70,23 @@ The storage will require an `Config file location`, `configuration profile`(if t
     console.log("start");
     getKeeperRecordsOCI();
 ```
+## Change Key
+
+To change the KMS key used for encryption, you can call the `changeKey` method on the `OciKeyValueStorage` instance.
+```
+    const storage = await new OciKeyValueStorage(keyId, keyVersionId, config_path2, ociSessionConfig).init();
+    await storage.changeKey(keyId2, keyVersionId2);
+```
+
+## decrypt config
+
+To decrypt the config file and save it again in plaintext, you can call the `decryptConfig` method on the `OciKeyValueStorage` instance.
+Note: this will compromise the security of the config file.
+```
+    const storage = await new OciKeyValueStorage(keyId, keyVersionId, config_path2, ociSessionConfig).init();
+    await storage.decryptConfig();
+```
+
 
 Once set up, the Secrets Manager OCI KMS integration supports all Secrets Manager JavaScript SDK functionality.
 
