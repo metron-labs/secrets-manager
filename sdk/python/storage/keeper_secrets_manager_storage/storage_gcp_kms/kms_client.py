@@ -9,6 +9,7 @@
 # Contact: sm@keepersecurity.com
 
 import logging
+import traceback
 
 try:
     from google.cloud import kms
@@ -18,7 +19,7 @@ except ImportError:
                  " To install missing packages run: \r\n"
                  "pip install --upgrade \"google-cloud-kms\"\r\n"
                  "pip install --upgrade \"google-auth\"\r\n")
-    raise Exception("Missing import dependencies: google cloud kms and google oauth2")
+    raise Exception(f"Missing import dependencies: google cloud kms and google oauth2. Additional details: {traceback.format_exc()}")
 
 class GCPKMSClientConfig:
     """

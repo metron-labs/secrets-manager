@@ -7,7 +7,7 @@
 # Keeper Secrets Manager
 # Copyright 2025 Keeper Security Inc.
 # Contact: sm@keepersecurity.com
-
+import traceback
 import logging
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
@@ -25,7 +25,7 @@ except ImportError:
     logging.getLogger().error("Missing GCP checksum import dependencies."
                               " To install missing packages run: \r\n"
                               "pip install google-crc32c\r\n")
-    raise Exception("Missing import dependencies: google-crc32c")
+    raise Exception(f"Missing import dependencies: google-crc32c. Additional details: {traceback.format_exc()}")
 
 
 def encrypt_buffer(is_asymmetric, message, crypto_client, key_properties,encryption_algorithm):
