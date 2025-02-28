@@ -13,6 +13,7 @@ import logging
 import os
 import hashlib
 import json
+import uuid
 
 from keeper_secrets_manager_core.storage import KeyValueStorage
 from keeper_secrets_manager_core.configkeys import ConfigKeys
@@ -20,12 +21,15 @@ from keeper_secrets_manager_core.configkeys import ConfigKeys
 from .utils import decrypt_buffer, encrypt_buffer
 from .oci_kms_client import OciKmsClient
 from .oci_session_config import OCISessionConfig
+from oci.key_management import KmsCryptoClient,KmsManagementClient
+from oci.key_management.models import KeyShape
 
 default_logger_name = "ksm"
 class OracleKeyValueStorage(KeyValueStorage):
     
     default_config_file_location: str = "client-config.json"
-    crypto_client: OciKmsClient
+    crypto_client: KmsCryptoClient
+    management_client : KmsManagementClient
     key_id: str
     key_version_id: str | None
     config: dict[str, str] = {}
@@ -46,8 +50,10 @@ class OracleKeyValueStorage(KeyValueStorage):
         self.set_logger(logger)
         
         self.crypto_client =  OciKmsClient(oci_session_config).get_crypto_client()
+        self.management_client = OciKmsClient(oci_session_config).get_management_client()
         
         self.last_saved_config_hash = ""
+        self.get_key_details()
         self.load_config()
         
         self.logger.info(f"OracleKeyValueStorage initialized and loaded config from file {self.config_file_location}")
@@ -71,7 +77,8 @@ class OracleKeyValueStorage(KeyValueStorage):
                     key_id=self.key_id,
                     message=empty_config,
                     crypto_client=self.crypto_client,
-                    key_version_id=self.key_version_id
+                    key_version_id=self.key_version_id,
+                    is_asymmetric=self.is_asymmetric
                 )
                 with open(self.config_file_location, 'wb') as config_file:
                     config_file.write(blob)
@@ -102,7 +109,8 @@ class OracleKeyValueStorage(KeyValueStorage):
                 key_id=self.key_id,
                 ciphertext=ciphertext,
                 crypto_client=self.crypto_client,
-                key_version_id=self.key_version_id
+                key_version_id=self.key_version_id,
+                is_asymmetric=self.is_asymmetric
             )
             if len(plaintext) == 0:
                 self.logger.error(f"Failed to decrypt config file {self.config_file_location}")
@@ -147,7 +155,8 @@ class OracleKeyValueStorage(KeyValueStorage):
                 key_id=self.key_id,
                 message=stringified_value,
                 crypto_client=self.crypto_client,
-                key_version_id=self.key_version_id
+                key_version_id=self.key_version_id,
+                is_asymmetric=self.is_asymmetric
             )
             with open(self.config_file_location, 'wb') as config_file:
                 config_file.write(blob)
@@ -198,7 +207,8 @@ class OracleKeyValueStorage(KeyValueStorage):
                     key_id=self.key_id,
                     ciphertext=contents,
                     crypto_client=self.crypto_client,
-                    key_version_id=self.key_version_id
+                    key_version_id=self.key_version_id,
+                    is_asymmetric=self.is_asymmetric
                 )
                 try:
                     config = json.loads(config_json)
@@ -223,6 +233,7 @@ class OracleKeyValueStorage(KeyValueStorage):
         old_key_id = self.key_id
         old_key_version_id = self.key_version_id
         old_crypto_client = self.crypto_client
+        old_management_client = self.management_client
 
         try:
             # Update the key and reinitialize the CryptographyClient
@@ -231,18 +242,38 @@ class OracleKeyValueStorage(KeyValueStorage):
                 self.load_config()
             self.key_id = new_key_id
             self.key_version_id = new_key_version_id
+            self.get_key_details()
             self.__save_config({}, force=True)
         except Exception as error:
             # Restore the previous key and crypto client if the operation fails
             self.key_id = old_key_id
             self.key_version_id = old_key_version_id
             self.crypto_client = old_crypto_client
+            self.management_client = old_management_client
+            self.get_key_details()
             self.logger.error(
                 f"Failed to change the key to '{new_key_id}' for config '{self.config_file_location}': {error}"
             )
             raise Exception(f"Failed to change the key for {self.config_file_location}")
 
         return True
+    
+    def get_key_details(self):
+        
+        opc_request_id = uuid.uuid4().hex.upper()
+        
+        key_details = self.management_client.get_key(key_id=self.key_id, opc_request_id=opc_request_id)
+        
+        algorithm = key_details.data.key_shape.algorithm
+        
+        if algorithm == KeyShape.ALGORITHM_RSA:
+            self.is_asymmetric = True
+        elif algorithm == KeyShape.ALGORITHM_AES:
+            self.is_asymmetric = False
+        else:
+            raise Exception(f"Unsupported key algorithm for the given key: {algorithm}")
+        
+        
     
     def read_storage(self) -> dict[str, str]:
         if not self.config:

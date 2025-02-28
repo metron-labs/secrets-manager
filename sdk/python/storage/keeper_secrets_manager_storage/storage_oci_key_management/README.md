@@ -42,11 +42,12 @@ The storage will require a OCI Key ID, key version Id, as well as the name of th
 
     config_file_location = "/home/<user>/.oci/config"
     profile = "DEFAULT"
-    kms_endpoint = "https://<kmsendpoint>.oraclecloud.com"
+    kms_crypto_endpoint = "https://<kmsendpoint>.oraclecloud.com"
+    kms_mgmt_endpoint = "https://<kmsendpoint>.oraclecloud.com"
     key_id = '<key_id>'
     key_version_id = "<key_version_id>"
 
-    oci_session_config = OCISessionConfig(config_file_location, profile, kms_endpoint)
+    oci_session_config = OCISessionConfig(config_file_location, profile, kms_crypto_endpoint,ksm_mgmt_endpoint)
 
     config_path = "<path to config json>"
     one_time_token = "<OTT>"
@@ -63,6 +64,28 @@ The storage will require a OCI Key ID, key version Id, as well as the name of th
     first_record = all_records[0]
     first_record_password = next(field.value[0] for field in first_record.data.fields if field.type == 'bankAccount')
     print(first_record_password)
+```
+
+## Change Key
+
+If you want to change the key from previous configuration, you can use the `change_key` method.
+
+```
+    storage = OracleKeyValueStorage(key_id=key_id, key_version=key_version_id, config_file_location=config_path, oci_session_config=oci_session_config,logger=None)
+    
+    key_id_2 = "<second key id>"
+    key_version_id_2 = "<second key version>"
+
+    storage.change_key(key_id, key_version_id)
+```
+
+## Decrypt config
+
+Note : Danger Zone :: You can use this method to decrypt the config file.  This is not recommended for production use.
+
+```
+    storage = OracleKeyValueStorage(key_id=key_id, key_version=key_version_id, config_file_location=config_path, oci_session_config=oci_session_config,logger=None)
+    storage.decrypt_config()
 ```
 
 You're ready to use the KSM integration 👍

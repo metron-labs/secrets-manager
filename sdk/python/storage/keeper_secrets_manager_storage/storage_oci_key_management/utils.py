@@ -10,6 +10,7 @@
 
 import base64
 import logging
+import traceback
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from .constants import BLOB_HEADER, UTF_8_ENCODING
@@ -23,10 +24,10 @@ except ImportError:
     logging.getLogger().error("Missing oracle dependencies, import dependencies."
                               " To install missing packages run: \r\n"
                               "pip install oci\r\n")
-    raise Exception("Missing import dependencies: oci")
+    raise Exception(f"Missing import dependencies: oci. Additional data related to error is as follows: {traceback.format_exc()}")
 
 
-def encrypt_buffer(key_id, message, crypto_client, key_version_id=None):
+def encrypt_buffer(key_id, message, crypto_client, key_version_id=None, is_asymmetric=False):
     try:
         # Generate a random 32-byte key
         key = get_random_bytes(32)
@@ -46,22 +47,12 @@ def encrypt_buffer(key_id, message, crypto_client, key_version_id=None):
         if key_version_id:
             encrypt_data_details.key_version_id = key_version_id
 
-        try:
-            encrypt_response = crypto_client.encrypt(encrypt_data_details)
-        except ServiceError as e:
-            logging.getLogger().info("since the provided key is not a symmetric key, retrying with RSA key configuration")
-            if e.code == "InvalidParameter":
-                encrypt_data_details.encryption_algorithm = EncryptDataDetails.ENCRYPTION_ALGORITHM_RSA_OAEP_SHA_256
-                encrypt_response = crypto_client.encrypt(encrypt_data_details)
-            else:
-                raise e
-        except Exception as e:
-            logging.getLogger().error("Failed to encrypt data: {e}")
-            return b''
-        finally:
-            encrypted_key = base64.b64decode(encrypt_response.data.ciphertext)
+        if is_asymmetric:
+            encrypt_data_details.encryption_algorithm = EncryptDataDetails.ENCRYPTION_ALGORITHM_RSA_OAEP_SHA_256
 
-        
+        encrypt_response = crypto_client.encrypt(encrypt_data_details)
+        encrypted_key = base64.b64decode(encrypt_response.data.ciphertext)
+
         parts = [encrypted_key, cipher.nonce, tag, ciphertext]
 
         buffers = bytearray()
@@ -76,7 +67,7 @@ def encrypt_buffer(key_id, message, crypto_client, key_version_id=None):
         print(f"KCP KMS Storage failed to encrypt: {err}")
         return b''  # Return empty buffer in case of an error
 
-def decrypt_buffer(key_id : str, ciphertext : str,  crypto_client: KmsCryptoClient, key_version_id: str):
+def decrypt_buffer(key_id : str, ciphertext : str,  crypto_client: KmsCryptoClient, key_version_id: str, is_asymmetric=False):
     try:
         # Validate BLOB_HEADER
         header = ciphertext[:2]
@@ -106,22 +97,12 @@ def decrypt_buffer(key_id : str, ciphertext : str,  crypto_client: KmsCryptoClie
         if key_version_id:
             decrpt_data.key_version_id = key_version_id
         
-        try:
-            encrypt_response = crypto_client.decrypt(decrypt_data_details=decrpt_data)
-        except ServiceError as e:
-            logging.getLogger().info("since the provided key is not a symmetric key, retrying with RSA key configuration")
-            if e.code == "InvalidParameter":
-                decrpt_data.encryption_algorithm = EncryptDataDetails.ENCRYPTION_ALGORITHM_RSA_OAEP_SHA_256
-                encrypt_response = crypto_client.decrypt(decrypt_data_details=decrpt_data)
-            else:
-                raise e
-        except Exception as e:
-            logging.getLogger().error("Failed to decrypt data: {e}")
-            return b''
-        finally:
-            key = base64.b64decode(encrypt_response.data.plaintext)
-    
-    
+        if is_asymmetric:
+            decrpt_data.encryption_algorithm = DecryptDataDetails.ENCRYPTION_ALGORITHM_RSA_OAEP_SHA_256
+        
+        encrypt_response = crypto_client.decrypt(decrypt_data_details=decrpt_data)
+        key = base64.b64decode(encrypt_response.data.plaintext)
+        
         # Decrypt the message using AES-GCM
         cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
         decrypted = cipher.decrypt_and_verify(encrypted_text, tag)
