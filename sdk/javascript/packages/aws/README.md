@@ -109,6 +109,14 @@ The storage will require an AWS Key ID, as well as the name of the Secrets Manag
     getKeeperRecordsAWS()
 ```
 
+## Decrypt config operation
+we can decrypt config and save locally the decrypted file original config
+```
+    const storage = await new AWSKeyValueStorage(keyId,config_path).init();
+    await storage.decryptConfig();    
+```
+
+
 You're ready to use the KSM integration 👍
 Using the AWS KMS Integration
 
