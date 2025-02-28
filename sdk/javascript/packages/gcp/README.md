@@ -57,7 +57,6 @@ The storage will require a GCP Key ID, as well as the name of the Secrets Manage
         const oneTimeToken = "US:kYKVGFJ2605-9UBF4VXd14AztMPXcxZ56zC9gr7O-Cw";
         
         const storage = await new GCPKeyValueStorage(config_path,keyConfig2,gcpSessionConfig).init();
-        // await storage.changeKey(keyConfig2);
         await initializeStorage(storage, oneTimeToken);
         
         const {records} = await getSecrets({storage: storage});
@@ -69,8 +68,23 @@ The storage will require a GCP Key ID, as well as the name of the Secrets Manage
     }
     console.log("start")
     getKeeperRecordsGCP()
-
 ```
+ ### Change key
+
+You can change the key used to encrypt and decrypt your configuration file by calling the changeKey method on the storage object.
+```
+  const storage = await new GCPKeyValueStorage(configPath,keyConfig,gcpSessionConfig).init();
+  await storage.changeKey(keyConfig2);
+```
+
+### Decrypt config
+We can decrypt the configuration file and revert it back to plaintext and save it indefault location if needed.
+```
+  const storage = await new GCPKeyValueStorage(configPath,keyConfig,gcpSessionConfig).init();
+  await storage.decryptConfig(keyConfig2);
+```
+
+
 You're ready to use the KSM integration 👍
 Using the GCP KMS Integration
 
