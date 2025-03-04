@@ -43,17 +43,14 @@ public class GcpKeyValueStorage implements KeyValueStorage {
 	private String defaultConfigFileLocation = "client-config.json";
 	private String lastSavedConfigHash, updateConfigHash;
 	private String configFileLocation;
-	private String keyId;
 	private Map<String, Object> configMap;
 
 	private KMSUtils kmsClient;
 
-	private GcpKeyValueStorage(String keyId, String configFileLocation, GcpSessionConfig sessionConfig)
-			throws Exception {
+	private GcpKeyValueStorage(String configFileLocation, GcpSessionConfig sessionConfig) throws Exception {
 		this.configFileLocation = configFileLocation != null ? configFileLocation
 				: System.getenv("KSM_CONFIG_FILE") != null ? System.getenv("KSM_CONFIG_FILE")
 						: this.defaultConfigFileLocation;
-		this.keyId = keyId != null ? keyId : System.getenv("KSM_AZ_KEY_ID");
 		kmsClient = new KMSUtils(sessionConfig);
 		loadConfig();
 	}
@@ -66,9 +63,9 @@ public class GcpKeyValueStorage implements KeyValueStorage {
 	 * @return
 	 * @throws Exception
 	 */
-	public static KeyValueStorage getInternalStorage(String keyId, String configFileLocation,
-			GcpSessionConfig sessionConfig) throws Exception {
-		KeyValueStorage storage = new GcpKeyValueStorage(keyId, configFileLocation, sessionConfig);
+	public static KeyValueStorage getInternalStorage(String configFileLocation, GcpSessionConfig sessionConfig)
+			throws Exception {
+		KeyValueStorage storage = new GcpKeyValueStorage(configFileLocation, sessionConfig);
 		return storage;
 	}
 
@@ -172,18 +169,18 @@ public class GcpKeyValueStorage implements KeyValueStorage {
 			writeLengthPrefixed(blob, encrypted);
 			return blob.toByteArray();
 		} else {
-			byte[] nance = new byte[Constants.BLOCK_SIZE];
+			byte[] nonce = new byte[Constants.BLOCK_SIZE];
 			byte[] key = new byte[Constants.KEY_SIZE];
-			Cipher cipher = getGCMCipher(Cipher.ENCRYPT_MODE, key, nance);
+			Cipher cipher = getGCMCipher(Cipher.ENCRYPT_MODE, key, nonce);
 			byte[] ciphertext = cipher.doFinal(message.getBytes());
 
 			byte[] tag = cipher.getIV();
-//			byte[] encryptedKey = kmsClient.encrypt(SdkBytes.fromByteArray(key), keyId);
+			byte[] encryptedKey = kmsClient.encryptAsymmetricRsa(key);
 
 			ByteArrayOutputStream blob = new ByteArrayOutputStream();
 			blob.write(Constants.BLOB_HEADER);
-			writeLengthPrefixed(blob, "".getBytes());
-			writeLengthPrefixed(blob, nance);
+			writeLengthPrefixed(blob, encryptedKey);
+			writeLengthPrefixed(blob, nonce);
 			writeLengthPrefixed(blob, tag);
 			writeLengthPrefixed(blob, ciphertext);
 			return blob.toByteArray();
@@ -200,10 +197,7 @@ public class GcpKeyValueStorage implements KeyValueStorage {
 		if (kmsClient.isSymmetricKey()) {
 			ByteArrayInputStream blobInputStream = new ByteArrayInputStream(encryptedData);
 			byte[] encrypted = readLengthPrefixed(blobInputStream);
-			
-			String decryptedMessage = kmsClient.decryptSymmetric(ByteString.copyFrom(encrypted));
-//			return new String(decryptedMessage, StandardCharsets.UTF_8);
-			return decryptedMessage;
+			return kmsClient.decryptSymmetric(ByteString.copyFrom(encrypted));
 
 		} else {
 			ByteArrayInputStream blobInputStream = new ByteArrayInputStream(encryptedData);
@@ -217,10 +211,9 @@ public class GcpKeyValueStorage implements KeyValueStorage {
 			byte[] nonce = readLengthPrefixed(blobInputStream);
 			byte[] tag = readLengthPrefixed(blobInputStream);
 			byte[] ciphertext = readLengthPrefixed(blobInputStream);
-
 			// Decrypt the AES key using RSA (unwrap the key)
-//			byte[] key = kmsClient.decrypt(encryptedKey, keyId).asByteArray();
-			byte[] key = "".getBytes();
+			byte[] key = kmsClient.decryptAsymmetricRsa(encryptedKey);
+
 			Cipher cipher = getGCMCipher(Cipher.DECRYPT_MODE, key, nonce);
 
 			byte[] decryptedMessage = cipher.doFinal(ciphertext);

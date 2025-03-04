@@ -4,15 +4,17 @@ public class GcpSessionConfig {
 
 	private String location;
 	private String keyRing;
-	private String keyName;
+	private String keyId;
 	private String projectId;
+	private String keyVersion;
 	
-	public GcpSessionConfig(String projectId, String location, String keyRing, String keyName) {
+	public GcpSessionConfig(String projectId, String location, String keyRing, String keyId, String keyVersion) {
 		super();
 		this.location = location;
 		this.keyRing = keyRing;
-		this.keyName = keyName;
+		this.keyId = keyId;
 		this.projectId = projectId;
+		this.keyVersion = keyVersion;
 	}
 	
 	public String getProjectId() {
@@ -33,11 +35,18 @@ public class GcpSessionConfig {
 	public void setKeyRing(String keyRing) {
 		this.keyRing = keyRing;
 	}
-	public String getKeyName() {
-		return keyName;
+	public String getKeyId() {
+		return keyId;
 	}
-	public void setKeyName(String keyName) {
-		this.keyName = keyName;
+	public void setKeyId(String keyId) {
+		this.keyId = keyId;
+	}
+	public String getKeyVersion() {
+		return keyVersion;
+	}
+
+	public void setKeyVersion(String keyVersion) {
+		this.keyVersion = keyVersion;
 	}
 
 }
