@@ -13,7 +13,7 @@ using System.Text;
 using System.Linq;
 using Azure.Core;
 
-namespace AzureKeyvault{
+namespace AzureKeyVault{
 
     public class AzureKeyValueStorage : IKeyValueStorage
     {
@@ -30,7 +30,7 @@ namespace AzureKeyvault{
         public AzureKeyValueStorage(string keyId,string? configFileLocation = null, AzureSessionConfig? credentials=null,ILogger<AzureKeyValueStorage>? logger = null)
         {
             this.keyId = keyId;
-            this.configFileLocation = configFileLocation ?? DefaultConfigFileLocation;
+            this.configFileLocation = Path.GetFullPath(configFileLocation) ?? DefaultConfigFileLocation;
 
             // Initialize Azure Key Vault CryptographyClient
             if (credentials != null && 
@@ -52,6 +52,7 @@ namespace AzureKeyvault{
             cryptoClient = new CryptographyClient(new Uri(keyId), azureCredentials);
             this.logger = logger ?? LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<AzureKeyValueStorage>();
             lastSavedConfigHash = "";
+            LoadConfigAsync().Wait();
         }
 
         public string? GetString(string key)
@@ -117,8 +118,29 @@ namespace AzureKeyvault{
                 // Read the config file
                 byte[] contents;
                 try
-                {
-                    contents = await File.ReadAllBytesAsync(configFileLocation);
+                {   
+                    string configData = File.ReadAllText(configFileLocation);
+                    
+                    using (FileStream fs = new FileStream(configFileLocation, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (StreamReader reader = new StreamReader(fs))
+                    {
+                        string json = reader.ReadToEnd();
+                        Console.WriteLine($"📜 Read JSON: '{json}' (Length: {json.Length})");
+                    }
+
+                    try
+                    {
+                        bool fileExists = File.Exists(configFileLocation);
+                        var obj = JsonSerializer.Deserialize<Dictionary<string, string>>(configData);
+                        contents = Encoding.UTF8.GetBytes(configData);
+                        Console.WriteLine("Valid JSON parsed successfully.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error parsing valid JSON: {ex.Message}");
+                        contents = await File.ReadAllBytesAsync(configFileLocation);
+                    }
+                    
                     logger.LogInformation("Loaded config file {Path}", configFileLocation);
                 }
                 catch (Exception ex)
@@ -318,7 +340,7 @@ namespace AzureKeyvault{
             if (config == null){
                 return "{}";
             }
-            var sortedKeys = System.Linq.Enumerable.OrderBy(config.Keys, k => k).ToList();
+            var sortedKeys = Enumerable.OrderBy(config.Keys, k => k).ToList();
             var sortedConfig = sortedKeys.ToDictionary(k => k, k => config[k]);
             return JsonSerializer.Serialize(sortedConfig, new JsonSerializerOptions { WriteIndented = true });
         }
@@ -331,6 +353,5 @@ namespace AzureKeyvault{
         }
 
     }
-
 
 }

@@ -12,7 +12,7 @@ public static class IntegrationConstants
     public const int DEFAULT_JSON_INDENT = 4;
     public const int HEADER_SIZE = 2;
     public const int AES_KEY_SIZE = 32;
-    public const int NONCE_SIZE = 16;
-    public const int AES_GCM_TAG_BYTE_SIZE = 32;
+    public const int NONCE_SIZE = 12;
+    public const int AES_GCM_TAG_BYTE_SIZE = 16;
     public const int RSA_OAEP_KEY_SIZE = 2048;
 }

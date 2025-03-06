@@ -1,4 +1,4 @@
-namespace AzureKeyvault{
+namespace AzureKeyVault{
     public class AzureSessionConfig
     {
         public string TenantId { get; }
